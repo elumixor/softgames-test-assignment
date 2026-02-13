@@ -1,0 +1,50 @@
+## Code style
+
+- ALWAYS use `??` operator instead of `||` when providing default values, unless you specifically want to treat falsy values (like `0` or `""`) as needing a default.
+- Single-statement blocks: Remove braces, keep on one line (e.g., `if (condition) throw error;`)
+- Write self-explanatory code, avoid obvious comments - code should clearly express what it does through good naming and structure
+- Compact object returns when simple (e.g., `return { inlineData: { mimeType, data } };`)
+- Never use `setXXX()`/`getXXX()` methods - use TypeScript getters/setters property accessors instead
+- Never add unnecessary `?` optional chaining - if a value is always defined, don't mark it optional
+- Don't use `!` - throw a descriptive error instead
+- Don't define excessive helper interfaces and types - rely more on typescript inference - write minimal, readable code
+- Never simply silence errors. Always at least log them to console: `catch (e) { throw new Error("Descriptive message: " + e.message); }`
+
+```typescript
+class Example {
+  // assign fields directly in declaration when possible
+  private readonly field = new Field();
+
+  // assign fields in constructor when initialization requires parameters or logic
+  constructor(private readonly dependency: Dependency) {}
+}
+```
+
+## Other Development Notes
+
+- Never run `dev` script
+- Do not run full `build` to check
+- Run `bun run lint` to check typescript and biome errors and warnings
+- Run `bun run format` to format everything after your changes
+
+## @elumixor packages
+
+### `@elumixor/di`
+Singleton DI container. Classes as tokens, no decorators.
+```typescript
+import { di } from "@elumixor/di";
+// Wrap class to auto-register on construction:
+const MyService = di.injectable(class MyService { /* ... */ });
+new MyService(); // registers singleton
+// Retrieve:
+const svc = di.inject(MyService);
+const maybeSvc = di.inject(MyService, { optional: true }); // returns undefined if not registered
+// Manual: di.provide(Token, instance), di.uninject(Token)
+```
+
+### `@elumixor/extensions`
+Import side-effect style: `import "@elumixor/extensions";`
+Adds Array extensions (`.first`, `.last`, `.isEmpty`, `.shuffle()`, `.pick()`, `Array.range()`), Set extensions, String extensions (`.capitalize()`).
+
+### `@elumixor/frontils`
+Utilities: `all()` (typed Promise.all), `assert()`, `delay(seconds)`, `random`, `nonNull()`, `zip()`, `DefaultMap`.
