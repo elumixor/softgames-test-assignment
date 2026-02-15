@@ -4,6 +4,8 @@ import { Assets, Sprite, Text, type Ticker } from "pixi.js";
 import { App } from "../../app";
 import { BackButton } from "../../components/back-button";
 import { FullscreenButton } from "../../components/fullscreen-button";
+import { SoundButton } from "../../components/sound-button";
+import { SoundManager } from "../../sound-manager";
 import { Scene } from "../scene";
 import { loadCardSprites } from "./card";
 
@@ -35,6 +37,8 @@ export class AceOfShadowsScene extends Scene {
     location.hash = "";
   });
   private readonly fullscreenButton = new FullscreenButton();
+  private readonly soundButton = new SoundButton();
+  private readonly soundManager = di.inject(SoundManager);
   private readonly background = new Sprite();
   private readonly stackCounter = new Text({
     text: "0",
@@ -120,7 +124,8 @@ export class AceOfShadowsScene extends Scene {
 
     this.backButton.zIndex = 10000;
     this.fullscreenButton.zIndex = 10000;
-    this.addChild(this.backButton, this.fullscreenButton);
+    this.soundButton.zIndex = 10000;
+    this.addChild(this.backButton, this.fullscreenButton, this.soundButton);
     this.activateTopCard();
     this.updateCounters();
     this.app.ticker.add(this.onTick);
@@ -140,7 +145,8 @@ export class AceOfShadowsScene extends Scene {
     );
 
     this.fullscreenButton.placeTopRight(localLeft + localW, localTop, 0);
-    this.backButton.placeTopRight(localLeft + localW, localTop, 1);
+    this.soundButton.placeTopRight(localLeft + localW, localTop, 1);
+    this.backButton.placeTopRight(localLeft + localW, localTop, 2);
   }
 
   override destroy() {
@@ -250,7 +256,7 @@ export class AceOfShadowsScene extends Scene {
   }
 
   private playSlideSound() {
-    if (!this.slideSound) return;
+    if (!this.slideSound || this.soundManager.muted) return;
     const s = this.slideSound.cloneNode() as HTMLAudioElement;
     s.volume = 0.3;
     // biome-ignore lint/suspicious/noEmptyBlockStatements: autoplay may be blocked

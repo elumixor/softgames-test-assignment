@@ -4,6 +4,8 @@ import dialogueData from "../../../data/magic-words.json";
 import { App } from "../../app";
 import { BackButton } from "../../components/back-button";
 import { FullscreenButton } from "../../components/fullscreen-button";
+import { SoundButton } from "../../components/sound-button";
+import { SoundManager } from "../../sound-manager";
 import { Scene } from "../scene";
 import { RichText } from "./rich-text";
 
@@ -61,6 +63,8 @@ export class MagicWordsScene extends Scene {
     location.hash = "";
   });
   private readonly fullscreenButton = new FullscreenButton();
+  private readonly soundButton = new SoundButton();
+  private readonly soundManager = di.inject(SoundManager);
   private readonly messagesContainer = new Container();
   private readonly background = new TilingSprite();
   private readonly scrollMask = new Graphics();
@@ -154,7 +158,7 @@ export class MagicWordsScene extends Scene {
     this.scrollHit.on("pointerupoutside", this.handlePointerUp, this);
     this.addChild(this.scrollHit);
 
-    this.addChild(this.backButton, this.fullscreenButton);
+    this.addChild(this.backButton, this.fullscreenButton, this.soundButton);
 
     this.app.renderer.canvas.addEventListener("wheel", this.boundWheel, { passive: false });
 
@@ -191,7 +195,8 @@ export class MagicWordsScene extends Scene {
     this.messagesContainer.y = this.viewTop - this.scrollY;
 
     this.fullscreenButton.placeTopRight(localLeft + localWidth, localTop, 0);
-    this.backButton.placeTopRight(localLeft + localWidth, localTop, 1);
+    this.soundButton.placeTopRight(localLeft + localWidth, localTop, 1);
+    this.backButton.placeTopRight(localLeft + localWidth, localTop, 2);
   }
 
   override destroy() {
@@ -262,7 +267,7 @@ export class MagicWordsScene extends Scene {
           this.updateBubble();
 
           this.typingSoundCounter++;
-          if (this.typingSoundSrc && this.typingSoundCounter % 4 === 0) {
+          if (this.typingSoundSrc && !this.soundManager.muted && this.typingSoundCounter % 4 === 0) {
             const sound = new Audio(this.typingSoundSrc);
             sound.volume = 0.3;
             sound.playbackRate = 1 + Math.random() * 0.4;

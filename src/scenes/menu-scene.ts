@@ -3,6 +3,7 @@ import { Assets, Container, Graphics, Sprite, Text, type Texture, TilingSprite }
 import { App } from "../app";
 import { FullscreenButton } from "../components/fullscreen-button";
 import { FullscreenHint } from "../components/fullscreen-hint";
+import { SoundButton } from "../components/sound-button";
 import { Scene } from "./scene";
 
 interface MenuEntry {
@@ -25,6 +26,7 @@ export class MenuScene extends Scene {
   });
   private readonly buttons = new Container();
   private readonly fullscreenButton = new FullscreenButton();
+  private readonly soundButton = new SoundButton();
   private readonly fullscreenHint = new FullscreenHint();
 
   override async init() {
@@ -67,8 +69,9 @@ export class MenuScene extends Scene {
 
     this.fullscreenHint.position.set(500, startY + entries.length * buttonSpacing + 40);
     this.fullscreenButton.zIndex = 10000;
+    this.soundButton.zIndex = 10000;
     this.sortableChildren = true;
-    this.addChild(this.fullscreenHint, this.fullscreenButton);
+    this.addChild(this.fullscreenHint, this.fullscreenButton, this.soundButton);
   }
 
   override onResize(screenWidth: number, screenHeight: number) {
@@ -80,6 +83,7 @@ export class MenuScene extends Scene {
     this.background.height = screenHeight / s;
 
     this.fullscreenButton.placeTopRight(localLeft + screenWidth / s, localTop, 0);
+    this.soundButton.placeTopRight(localLeft + screenWidth / s, localTop, 1);
   }
 
   private createButton(label: string, onClick: () => void) {

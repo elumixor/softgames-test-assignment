@@ -6,6 +6,7 @@ import screenfull from "screenfull";
 import { App } from "./app";
 import { FpsCounter } from "./components/fps-counter";
 import { SceneManager } from "./scenes/scene-manager";
+import { SoundManager } from "./sound-manager";
 
 async function main() {
   const app = new App();
@@ -15,8 +16,11 @@ async function main() {
     "assets/fonts/sour-gummy.ttf",
     "assets/ui/left.png",
     "assets/ui/fullscreen.png",
+    "assets/ui/sound.png",
+    "assets/ui/no-sound.png",
   ]);
 
+  new SoundManager();
   const fpsCounter = new FpsCounter();
   app.stage.addChild(fpsCounter);
 
