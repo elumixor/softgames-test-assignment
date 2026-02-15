@@ -9,7 +9,7 @@ type RouteId = "ace-of-shadows" | "magic-words" | "phoenix-flame";
 const routeLoaders: Record<RouteId, () => Promise<Scene>> = {
   "ace-of-shadows": async () => new (await import("./ace-of-shadows/ace-of-shadows-scene")).AceOfShadowsScene(),
   "magic-words": async () => new (await import("./magic-words/magic-words-scene")).MagicWordsScene(),
-  "phoenix-flame": async () => new (await import("./phoenix-flame-scene")).PhoenixFlameScene(),
+  "phoenix-flame": async () => new (await import("./phoenix-flame/phoenix-flame-scene")).PhoenixFlameScene(),
 };
 
 @di.injectable
