@@ -4,10 +4,12 @@ import { Assets, Container, Rectangle, Sprite, type Ticker } from "pixi.js";
 import { App } from "../../app";
 import { BackButton } from "../../components/back-button";
 import { Scene } from "../scene";
-import { type CardAssets, generateAllCards } from "./card";
+import { CARD_WIDTH, loadCardSprites } from "./card";
 
-// Layout in 1000×1000 design space
-const CARD_SCALE = 0.35;
+// Layout in 1000x1000 design space
+// Original cards were 768x1344 at scale 0.35 => 268.8x470.4 display size
+// Atlas cards are 256x448, so scale to match: 268.8/256 = 1.05
+const CARD_SCALE = (768 * 0.35) / CARD_WIDTH;
 const STACK_X = 300;
 const STACK_Y = 350;
 const TABLE_X = 660;
@@ -35,8 +37,8 @@ export class AceOfShadowsScene extends Scene {
   private readonly background = new Sprite();
   private readonly hitZone = new Container();
 
-  private stack: Container[] = [];
-  private table: Container[] = [];
+  private stack: Sprite[] = [];
+  private table: Sprite[] = [];
   private moveTimer = 0;
   private hovering = false;
   private inFlight = 0;
@@ -44,21 +46,10 @@ export class AceOfShadowsScene extends Scene {
   private direction: "toTable" | "toStack" = "toTable";
 
   override async init() {
-    const [boardTex, warrior, rogue, mage, bard, gradient] = await Promise.all([
-      Assets.load("assets/board.jpg"),
-      Assets.load("assets/cards/warrior.png"),
-      Assets.load("assets/cards/rogue.png"),
-      Assets.load("assets/cards/mage.png"),
-      Assets.load("assets/cards/bard.png"),
-      Assets.load("assets/card-gradient.png"),
-      Assets.load("assets/fonts/fireside.otf"),
-    ]);
+    const [boardTex, cards] = await Promise.all([Assets.load("assets/board.jpg"), loadCardSprites()]);
 
     this.background.texture = boardTex;
     this.addChild(this.background);
-
-    const assets: CardAssets = { images: { warrior, rogue, mage, bard }, gradient };
-    const cards = generateAllCards(this.app.renderer, assets);
 
     // Fisher-Yates shuffle
     for (let i = cards.length - 1; i > 0; i--) {
@@ -241,7 +232,7 @@ export class AceOfShadowsScene extends Scene {
     this.updateHitZone();
   }
 
-  private animateToNeat(card: Container, tx: number, ty: number, duration: number): Promise<void> {
+  private animateToNeat(card: Sprite, tx: number, ty: number, duration: number): Promise<void> {
     return new Promise((resolve) => {
       const startX = card.x;
       const startY = card.y;
