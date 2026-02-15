@@ -5,7 +5,7 @@ export class BackButton extends Container {
     super();
 
     const bg = new Graphics().roundRect(0, 0, 100, 36, 8).fill({ color: 0x444466 }).stroke({ color: 0x8888aa });
-    const label = new Text({ text: "Back", style: { fontSize: 16, fill: 0xffffff } });
+    const label = new Text({ text: "Back", style: { fontSize: 16, fill: 0xffffff, fontFamily: "Anta" } });
     label.anchor.set(0.5);
     label.position.set(50, 18);
 

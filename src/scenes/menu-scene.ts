@@ -13,7 +13,10 @@ const entries: MenuEntry[] = [
 ];
 
 export class MenuScene extends Scene {
-  private readonly title = new Text({ text: "Softgames Assignment", style: { fontSize: 32, fill: 0xffffff } });
+  private readonly title = new Text({
+    text: "Softgames Assignment",
+    style: { fontSize: 32, fill: 0xffffff, fontFamily: "Anta" },
+  });
   private readonly buttons = new Container();
 
   override init() {
@@ -39,7 +42,7 @@ export class MenuScene extends Scene {
   private createButton(label: string, onClick: () => void) {
     const container = new Container();
     const bg = new Graphics().roundRect(0, 0, 240, 50, 12).fill({ color: 0x3a3a5c }).stroke({ color: 0x8888aa });
-    const text = new Text({ text: label, style: { fontSize: 18, fill: 0xffffff } });
+    const text = new Text({ text: label, style: { fontSize: 18, fill: 0xffffff, fontFamily: "Anta" } });
     text.anchor.set(0.5);
     text.position.set(120, 25);
 

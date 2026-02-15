@@ -24,6 +24,10 @@ const LIFT_SCALE_PEAK = 1.08;
 const ROTATION_SPREAD_DEG = 5;
 const POSITION_SPREAD = 8;
 
+// Tutorial hint
+const HINT_FADE_SPEED = 1.5;
+const HINT_INACTIVITY_DELAY = 1;
+
 export class AceOfShadowsScene extends Scene {
   private readonly app = di.inject(App);
   private readonly backButton = new BackButton(() => {
@@ -32,11 +36,15 @@ export class AceOfShadowsScene extends Scene {
   private readonly background = new Sprite();
   private readonly stackCounter = new Text({
     text: "0",
-    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Arial", dropShadow: { color: 0x000000, blur: 4, distance: 2 } },
+    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Anta", dropShadow: { color: 0x000000, blur: 4, distance: 2 } },
   });
   private readonly tableCounter = new Text({
     text: "0",
-    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Arial", dropShadow: { color: 0x000000, blur: 4, distance: 2 } },
+    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Anta", dropShadow: { color: 0x000000, blur: 4, distance: 2 } },
+  });
+  private readonly hint = new Text({
+    text: "Press on the deck to move faster",
+    style: { fill: 0xffffff, fontSize: 32, fontFamily: "Anta", dropShadow: { color: 0x000000, blur: 4, distance: 2 } },
   });
 
   private stack: Sprite[] = [];
@@ -46,6 +54,10 @@ export class AceOfShadowsScene extends Scene {
   private inFlight = 0;
   private tidying = false;
   private direction: "toTable" | "toStack" = "toTable";
+  private hintVisible = false;
+  private hintPhase = 0;
+  private inactivityTimer = HINT_INACTIVITY_DELAY;
+  private slideSound?: HTMLAudioElement;
 
   override async init() {
     const [boardTex, cards] = await Promise.all([Assets.load("assets/board.jpg"), loadCardSprites(this.app.renderer)]);
@@ -96,6 +108,14 @@ export class AceOfShadowsScene extends Scene {
     this.tableCounter.zIndex = 9999;
     this.addChild(this.tableCounter);
 
+    this.slideSound = new Audio("assets/sounds/cards-slide.mp3");
+
+    this.hint.anchor.set(0.5);
+    this.hint.position.set((STACK_X + TABLE_X) / 2, STACK_Y + COUNTER_Y_OFFSET + 130);
+    this.hint.zIndex = 9999;
+    this.hint.alpha = 0;
+    this.addChild(this.hint);
+
     this.backButton.zIndex = 10000;
     this.addChild(this.backButton);
     this.activateTopCard();
@@ -125,10 +145,29 @@ export class AceOfShadowsScene extends Scene {
   }
 
   private onTick = (ticker: Ticker) => {
+    const dt = ticker.deltaMS / 1000;
+
+    // Hint fade logic
+    if (this.hovering) {
+      this.hintVisible = false;
+      this.inactivityTimer = 0;
+    } else {
+      this.inactivityTimer += dt;
+      if (this.inactivityTimer >= HINT_INACTIVITY_DELAY) this.hintVisible = true;
+    }
+
+    if (this.hintVisible) {
+      this.hintPhase += dt * HINT_FADE_SPEED;
+      this.hint.alpha = (Math.sin(this.hintPhase) + 1) / 2;
+    } else {
+      this.hintPhase = 0;
+      if (this.hint.alpha > 0) this.hint.alpha = Math.max(0, this.hint.alpha - dt * 3);
+    }
+
     const source = this.direction === "toTable" ? this.stack : this.table;
     if (source.length === 0) return;
 
-    this.moveTimer += ticker.deltaMS / 1000;
+    this.moveTimer += dt;
     const interval = this.hovering ? FAST_MOVE_INTERVAL : MOVE_INTERVAL;
     if (this.moveTimer >= interval) {
       this.moveTimer = 0;
@@ -149,6 +188,7 @@ export class AceOfShadowsScene extends Scene {
     card.visible = true;
     card.eventMode = "none";
     this.activateTopCard();
+    this.playSlideSound();
 
     const startX = card.x;
     const startY = card.y;
@@ -203,6 +243,14 @@ export class AceOfShadowsScene extends Scene {
     };
 
     this.app.ticker.add(update);
+  }
+
+  private playSlideSound() {
+    if (!this.slideSound) return;
+    const s = this.slideSound.cloneNode() as HTMLAudioElement;
+    s.volume = 0.3;
+    // biome-ignore lint/suspicious/noEmptyBlockStatements: autoplay may be blocked
+    s.play().catch(() => {});
   }
 
   private updateCounters() {

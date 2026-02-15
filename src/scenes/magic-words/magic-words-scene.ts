@@ -329,7 +329,7 @@ export class MagicWordsScene extends Scene {
     const row = new Container();
     const color = characterColors[name] ?? defaultColor;
 
-    const nameLabel = new Text({ text: name, style: { fontSize: 13, fill: color, fontFamily: "Arial" } });
+    const nameLabel = new Text({ text: name, style: { fontSize: 13, fill: color, fontFamily: "Anta" } });
 
     const richText = new RichText(text, this.emojiTextures, {
       maxWidth: BUBBLE_MAX_TEXT_W,
@@ -394,7 +394,7 @@ export class MagicWordsScene extends Scene {
       .fill({ color: characterColors[name] ?? defaultColor });
     const initial = new Text({
       text: name[0],
-      style: { fontSize: 24, fill: 0xffffff, fontFamily: "Arial" },
+      style: { fontSize: 24, fill: 0xffffff, fontFamily: "Anta" },
     });
     initial.anchor.set(0.5);
     initial.position.set(AVATAR_SIZE / 2, AVATAR_SIZE / 2);

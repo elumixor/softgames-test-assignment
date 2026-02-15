@@ -3,7 +3,10 @@ import { BackButton } from "../components/back-button";
 import { Scene } from "./scene";
 
 export class PhoenixFlameScene extends Scene {
-  private readonly title = new Text({ text: "Phoenix Flame", style: { fontSize: 28, fill: 0xffffff } });
+  private readonly title = new Text({
+    text: "Phoenix Flame",
+    style: { fontSize: 28, fill: 0xffffff, fontFamily: "Anta" },
+  });
   private readonly backButton = new BackButton(() => {
     location.hash = "";
   });
