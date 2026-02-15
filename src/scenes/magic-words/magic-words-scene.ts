@@ -16,11 +16,17 @@ const BUBBLE_COLOR = 0x2a2a3e;
 const GAP = 10;
 const MESSAGE_SPACING = 10;
 const FONT_SIZE = 16;
-const VIEW_PAD = 10;
+const VIEW_PAD_TOP = 0;
+const VIEW_PAD_BOTTOM = 0;
+const CONTENT_PAD_TOP = 100;
+const CONTENT_PAD_BOTTOM = 300;
 
 // Timing
 const TYPING_SPEED = 80;
-const PAUSE_AFTER_MESSAGE = 0.3;
+const PAUSE_AFTER_MESSAGE = 0.5;
+const PAUSE_CHARS = new Set([".", "!", "?"]);
+const PAUSE_CHAR_DURATION = 0.3;
+const PAUSE_EMOJI_DURATION = 0.4;
 
 // Scrolling
 const SCROLL_LERP = 0.15;
@@ -59,10 +65,9 @@ export class MagicWordsScene extends Scene {
   private avatarPositions = new Map<string, "left" | "right">();
 
   private currentIndex = 0;
-  private nextY = 0;
+  private nextY = CONTENT_PAD_TOP;
   private scrollY = 0;
   private scrollTarget = 0;
-  private autoScrollEnabled = true;
 
   // Dynamic viewport (updated in onResize)
   private viewTop = 0;
@@ -74,6 +79,13 @@ export class MagicWordsScene extends Scene {
   private pauseTimer = 0;
   private typing = false;
   private pausing = false;
+  private charPausing = false;
+  private charPauseTimer = 0;
+  private charPauseDuration = 0;
+
+  // Typing sound
+  private typingSoundSrc = "";
+  private typingSoundCounter = 0;
 
   // Touch drag state
   private dragging = false;
@@ -87,14 +99,16 @@ export class MagicWordsScene extends Scene {
       this.avatarPositions.set(avatar.name, avatar.position as "left" | "right");
 
     const emojiLoads = dialogueData.emojies.map(async (e) => {
-      const texture = await Assets.load<Texture>(`magic-words/emojis/${e.name}.png`);
+      const texture = await Assets.load<Texture>(`assets/magic-words/emojis/${e.name}.png`);
       this.emojiTextures.set(e.name, texture);
     });
     const avatarLoads = dialogueData.avatars.map(async (a) => {
-      const texture = await Assets.load<Texture>(`magic-words/avatars/${a.name.toLowerCase()}.png`);
+      const texture = await Assets.load<Texture>(`assets/magic-words/avatars/${a.name.toLowerCase()}.png`);
       this.avatarTextures.set(a.name, texture);
     });
     await Promise.all([...emojiLoads, ...avatarLoads]);
+
+    this.typingSoundSrc = "assets/sounds/click.mp3";
 
     // Mask (placeholder — redrawn immediately in onResize)
     this.scrollMask.rect(0, 0, 1000, 1000).fill({ color: 0xffffff });
@@ -128,8 +142,8 @@ export class MagicWordsScene extends Scene {
     const localWidth = screenWidth / s;
     const localHeight = screenHeight / s;
 
-    this.viewTop = localTop + VIEW_PAD;
-    this.viewHeight = localHeight - VIEW_PAD * 2;
+    this.viewTop = localTop + VIEW_PAD_TOP;
+    this.viewHeight = localHeight - VIEW_PAD_TOP - VIEW_PAD_BOTTOM;
 
     // Redraw mask to cover full viewport
     this.scrollMask.clear();
@@ -154,7 +168,7 @@ export class MagicWordsScene extends Scene {
   }
 
   private get maxScroll() {
-    return Math.max(0, this.nextY - this.viewHeight);
+    return Math.max(0, this.nextY + CONTENT_PAD_BOTTOM - this.viewHeight);
   }
 
   private clampScroll(v: number) {
@@ -165,7 +179,6 @@ export class MagicWordsScene extends Scene {
 
   private handleWheel(e: WheelEvent) {
     e.preventDefault();
-    this.autoScrollEnabled = false;
     this.scrollTarget = this.clampScroll(this.scrollTarget + e.deltaY * WHEEL_SENSITIVITY);
     this.dragVelocity = 0;
   }
@@ -174,7 +187,6 @@ export class MagicWordsScene extends Scene {
     this.dragging = true;
     this.dragLastY = e.globalY;
     this.dragVelocity = 0;
-    this.autoScrollEnabled = false;
   }
 
   private handlePointerMove(e: { globalY: number }) {
@@ -197,18 +209,47 @@ export class MagicWordsScene extends Scene {
 
     // Typing
     if (this.typing && this.activeMsg) {
-      this.typingAccum += dt * TYPING_SPEED;
-      const toReveal = Math.floor(this.typingAccum);
-      if (toReveal > 0) {
-        this.activeMsg.richText.revealedCount += toReveal;
-        this.typingAccum -= toReveal;
-        this.updateBubble();
-      }
+      if (this.charPausing) {
+        this.charPauseTimer += dt;
+        if (this.charPauseTimer >= this.charPauseDuration) this.charPausing = false;
+      } else {
+        this.typingAccum += dt * TYPING_SPEED;
+        const toReveal = Math.floor(this.typingAccum);
+        if (toReveal > 0) {
+          const prevCount = this.activeMsg.richText.revealedCount;
+          this.activeMsg.richText.revealedCount += toReveal;
+          this.typingAccum -= toReveal;
+          this.updateBubble();
 
-      if (this.activeMsg.richText.isFullyRevealed) {
-        this.typing = false;
-        this.pausing = true;
-        this.pauseTimer = 0;
+          this.typingSoundCounter++;
+          if (this.typingSoundSrc && this.typingSoundCounter % 4 === 0) {
+            const sound = new Audio(this.typingSoundSrc);
+            sound.volume = 0.3;
+            sound.playbackRate = 1 + Math.random() * 0.4;
+            sound.play().catch(() => {
+              // Autoplay blocked
+            });
+          }
+
+          // Check last revealed character for pause
+          const lastIdx = prevCount + toReveal - 1;
+          const rt = this.activeMsg.richText;
+          if (rt.isEmoji(lastIdx)) {
+            this.charPausing = true;
+            this.charPauseTimer = 0;
+            this.charPauseDuration = PAUSE_EMOJI_DURATION;
+          } else if (PAUSE_CHARS.has(rt.charAt(lastIdx))) {
+            this.charPausing = true;
+            this.charPauseTimer = 0;
+            this.charPauseDuration = PAUSE_CHAR_DURATION;
+          }
+        }
+
+        if (this.activeMsg.richText.isFullyRevealed) {
+          this.typing = false;
+          this.pausing = true;
+          this.pauseTimer = 0;
+        }
       }
     }
 
@@ -276,10 +317,8 @@ export class MagicWordsScene extends Scene {
 
     this.nextY += msg.finalRowHeight + MESSAGE_SPACING;
 
-    if (this.autoScrollEnabled) {
-      const overflow = this.nextY - this.viewHeight;
-      if (overflow > 0) this.scrollTarget = overflow;
-    }
+    // Always scroll to bottom for new messages
+    this.scrollTarget = this.maxScroll;
   }
 
   private createMessageRow(

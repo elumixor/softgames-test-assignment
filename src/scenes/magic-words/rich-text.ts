@@ -31,8 +31,11 @@ interface InlineItem {
  * Supports character-by-character typing via `revealedCount`.
  * Use `visibleWidth` / `visibleHeight` to get the current extent of revealed content.
  */
+const EMOJI_CHAR = "\0";
+
 export class RichText extends Container {
   private readonly items: InlineItem[] = [];
+  private readonly _charMap: string[] = [];
   private _totalCharacters = 0;
   private _revealedCount = 0;
   private _lineHeight = 0;
@@ -68,6 +71,14 @@ export class RichText extends Container {
 
   revealAll() {
     this.revealedCount = this._totalCharacters;
+  }
+
+  charAt(index: number) {
+    return this._charMap[index] ?? "";
+  }
+
+  isEmoji(index: number) {
+    return this._charMap[index] === EMOJI_CHAR;
   }
 
   get visibleWidth() {
@@ -127,6 +138,7 @@ export class RichText extends Container {
         sprite.visible = false;
         this.addChild(sprite);
         this.items.push({ element: sprite, chars: 1 });
+        this._charMap.push(EMOJI_CHAR);
         this._totalCharacters += 1;
         x += emojiSize + 2;
       } else {
@@ -154,6 +166,7 @@ export class RichText extends Container {
           t.position.set(x, y);
           this.addChild(t);
           this.items.push({ element: t, chars: word.length });
+          for (const ch of word) this._charMap.push(ch);
           this._totalCharacters += word.length;
           x += fullWidth;
         }
