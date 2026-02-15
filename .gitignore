@@ -1,6 +1,5 @@
 node_modules
 dist
-generated
 .vite
 .DS_Store
 assignment.pdf

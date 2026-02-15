@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "generate:cards": "bun scripts/generate-cards.ts",
-    "build": "bun run generate:cards && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "lint": "biome check .",
     "format": "biome check --write ."
@@ -18,7 +17,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.9",
-    "@napi-rs/canvas": "^0.1.92",
     "typescript": "^5.7",
     "vite": "^6.3"
   }

@@ -1,15 +1,13 @@
 import { di } from "@elumixor/di";
 import { delay } from "@utils";
-import { Assets, Container, Rectangle, Sprite, type Ticker } from "pixi.js";
+import { Assets, Sprite, type Ticker } from "pixi.js";
 import { App } from "../../app";
 import { BackButton } from "../../components/back-button";
 import { Scene } from "../scene";
-import { CARD_WIDTH, loadCardSprites } from "./card";
+import { loadCardSprites } from "./card";
 
 // Layout in 1000x1000 design space
-// Original cards were 768x1344 at scale 0.35 => 268.8x470.4 display size
-// Atlas cards are 256x448, so scale to match: 268.8/256 = 1.05
-const CARD_SCALE = (768 * 0.35) / CARD_WIDTH;
+const CARD_SCALE = 0.35;
 const STACK_X = 300;
 const STACK_Y = 350;
 const TABLE_X = 660;
@@ -25,17 +23,12 @@ const LIFT_SCALE_PEAK = 1.08;
 const ROTATION_SPREAD_DEG = 5;
 const POSITION_SPREAD = 8;
 
-// Hit zone covers a card-sized area with padding
-const HIT_HALF_W = 190;
-const HIT_HALF_H = 280;
-
 export class AceOfShadowsScene extends Scene {
   private readonly app = di.inject(App);
   private readonly backButton = new BackButton(() => {
     location.hash = "";
   });
   private readonly background = new Sprite();
-  private readonly hitZone = new Container();
 
   private stack: Sprite[] = [];
   private table: Sprite[] = [];
@@ -44,9 +37,10 @@ export class AceOfShadowsScene extends Scene {
   private inFlight = 0;
   private tidying = false;
   private direction: "toTable" | "toStack" = "toTable";
+  private nextFlyZ = 1000;
 
   override async init() {
-    const [boardTex, cards] = await Promise.all([Assets.load("assets/board.jpg"), loadCardSprites()]);
+    const [boardTex, cards] = await Promise.all([Assets.load("assets/board.jpg"), loadCardSprites(this.app.renderer)]);
 
     this.background.texture = boardTex;
     this.addChild(this.background);
@@ -59,32 +53,34 @@ export class AceOfShadowsScene extends Scene {
 
     this.stack = cards;
 
+    this.sortableChildren = true;
+    this.background.zIndex = -1;
+
     for (let i = 0; i < this.stack.length; i++) {
       const card = this.stack[i];
       card.scale.set(CARD_SCALE);
       card.position.set(STACK_X + i * DEPTH_OFFSET, STACK_Y - i * DEPTH_OFFSET);
+      card.zIndex = i;
+      card.eventMode = "none";
+      card.cursor = "pointer";
+      card.on("pointerdown", () => {
+        this.hovering = true;
+      });
+      card.on("pointerup", () => {
+        this.hovering = false;
+      });
+      card.on("pointerupoutside", () => {
+        this.hovering = false;
+      });
+      card.on("pointerleave", () => {
+        this.hovering = false;
+      });
       this.addChild(card);
     }
 
-    // Hover hit zone over the source stack
-    this.hitZone.eventMode = "static";
-    this.hitZone.cursor = "pointer";
-    this.hitZone.on("pointerdown", () => {
-      this.hovering = true;
-    });
-    this.hitZone.on("pointerup", () => {
-      this.hovering = false;
-    });
-    this.hitZone.on("pointerupoutside", () => {
-      this.hovering = false;
-    });
-    this.hitZone.on("pointerleave", () => {
-      this.hovering = false;
-    });
-    this.updateHitZone();
-    this.addChild(this.hitZone);
-
+    this.backButton.zIndex = 10000;
     this.addChild(this.backButton);
+    this.activateTopCard();
     this.app.ticker.add(this.onTick);
   }
 
@@ -109,12 +105,6 @@ export class AceOfShadowsScene extends Scene {
     super.destroy();
   }
 
-  private updateHitZone() {
-    const sx = this.direction === "toTable" ? STACK_X : TABLE_X;
-    const sy = this.direction === "toTable" ? STACK_Y : TABLE_Y;
-    this.hitZone.hitArea = new Rectangle(sx - HIT_HALF_W, sy - HIT_HALF_H, HIT_HALF_W * 2, HIT_HALF_H * 2);
-  }
-
   private onTick = (ticker: Ticker) => {
     const source = this.direction === "toTable" ? this.stack : this.table;
     if (source.length === 0) return;
@@ -137,12 +127,10 @@ export class AceOfShadowsScene extends Scene {
     const dest = this.direction === "toTable" ? this.table : this.stack;
     const destIndex = dest.length;
 
-    // Ensure card is visible and bring to front
     card.visible = true;
-    this.removeChild(card);
-    this.addChild(card);
-    this.removeChild(this.backButton);
-    this.addChild(this.backButton);
+    card.eventMode = "none";
+    card.zIndex = this.nextFlyZ++;
+    this.activateTopCard();
 
     const startX = card.x;
     const startY = card.y;
@@ -176,6 +164,8 @@ export class AceOfShadowsScene extends Scene {
       const scaleBump = Math.sin(t * Math.PI) * (LIFT_SCALE_PEAK - 1);
       const easeRot = 1 - (1 - t) ** 2;
 
+      if (t >= 0.8) card.zIndex = destIndex;
+
       card.x = startX + (tx - startX) * easePos;
       card.y = startY + (ty - startY) * easePos - arc;
       card.scale.set(CARD_SCALE * (1 + scaleBump));
@@ -193,6 +183,19 @@ export class AceOfShadowsScene extends Scene {
     };
 
     this.app.ticker.add(update);
+  }
+
+  private rebuildZOrder() {
+    for (let i = 0; i < this.stack.length; i++) this.stack[i].zIndex = i;
+    for (let i = 0; i < this.table.length; i++) this.table[i].zIndex = i;
+  }
+
+  private activateTopCard() {
+    for (const card of this.stack) card.eventMode = "none";
+    for (const card of this.table) card.eventMode = "none";
+
+    const source = this.direction === "toTable" ? this.stack : this.table;
+    if (source.length > 0) source[source.length - 1].eventMode = "static";
   }
 
   private checkDirectionSwitch() {
@@ -215,13 +218,8 @@ export class AceOfShadowsScene extends Scene {
       pile.map((card, i) => this.animateToNeat(card, baseX + i * DEPTH_OFFSET, baseY - i * DEPTH_OFFSET, duration)),
     );
 
-    // Fix z-order: re-add cards bottom-to-top
-    for (const card of pile) this.removeChild(card);
-    for (const card of pile) this.addChild(card);
-    this.removeChild(this.hitZone);
-    this.addChild(this.hitZone);
-    this.removeChild(this.backButton);
-    this.addChild(this.backButton);
+    this.rebuildZOrder();
+    this.nextFlyZ = 1000;
 
     await delay(0.5);
 
@@ -229,7 +227,7 @@ export class AceOfShadowsScene extends Scene {
     this.hovering = false;
     this.moveTimer = 0;
     this.tidying = false;
-    this.updateHitZone();
+    this.activateTopCard();
   }
 
   private animateToNeat(card: Sprite, tx: number, ty: number, duration: number): Promise<void> {

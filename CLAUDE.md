@@ -24,27 +24,34 @@ class Example {
 
 - Never run `dev` script
 - Do not run full `build` to check
+- Use `ide - getDiagnostics` MCP tool to check issues in the current file
 - Run `bun run lint` to check typescript and biome errors and warnings
 - Run `bun run format` to format everything after your changes
 
 ## @elumixor packages
 
 ### `@elumixor/di`
+
 Singleton DI container. Classes as tokens, no decorators.
+
 ```typescript
 import { di } from "@elumixor/di";
-// Wrap class to auto-register on construction:
-const MyService = di.injectable(class MyService { /* ... */ });
+// Decorate class to auto-register on construction:
+@di.injectable
+class MyService {
+  /* ... */
+}
 new MyService(); // registers singleton
 // Retrieve:
 const svc = di.inject(MyService);
 const maybeSvc = di.inject(MyService, { optional: true }); // returns undefined if not registered
-// Manual: di.provide(Token, instance), di.uninject(Token)
 ```
 
 ### `@elumixor/extensions`
+
 Import side-effect style: `import "@elumixor/extensions";`
 Adds Array extensions (`.first`, `.last`, `.isEmpty`, `.shuffle()`, `.pick()`, `Array.range()`), Set extensions, String extensions (`.capitalize()`).
 
 ### `@elumixor/frontils`
+
 Utilities: `all()` (typed Promise.all), `assert()`, `delay(seconds)`, `random`, `nonNull()`, `zip()`, `DefaultMap`.
