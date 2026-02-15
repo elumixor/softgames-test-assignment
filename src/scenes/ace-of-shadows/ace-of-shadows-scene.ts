@@ -1,6 +1,6 @@
 import { di } from "@elumixor/di";
 import { delay } from "@utils";
-import { Assets, Sprite, type Ticker } from "pixi.js";
+import { Assets, Sprite, Text, type Ticker } from "pixi.js";
 import { App } from "../../app";
 import { BackButton } from "../../components/back-button";
 import { Scene } from "../scene";
@@ -9,10 +9,11 @@ import { loadCardSprites } from "./card";
 // Layout in 1000x1000 design space
 const CARD_SCALE = 0.35;
 const STACK_X = 300;
-const STACK_Y = 350;
+const STACK_Y = 400;
 const TABLE_X = 660;
-const TABLE_Y = 370;
+const TABLE_Y = 420;
 const DEPTH_OFFSET = 1;
+const COUNTER_Y_OFFSET = 280;
 
 // Animation tuning
 const MOVE_INTERVAL = 1;
@@ -29,6 +30,14 @@ export class AceOfShadowsScene extends Scene {
     location.hash = "";
   });
   private readonly background = new Sprite();
+  private readonly stackCounter = new Text({
+    text: "0",
+    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Arial", dropShadow: { color: 0x000000, blur: 4, distance: 2 } },
+  });
+  private readonly tableCounter = new Text({
+    text: "0",
+    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Arial", dropShadow: { color: 0x000000, blur: 4, distance: 2 } },
+  });
 
   private stack: Sprite[] = [];
   private table: Sprite[] = [];
@@ -37,7 +46,6 @@ export class AceOfShadowsScene extends Scene {
   private inFlight = 0;
   private tidying = false;
   private direction: "toTable" | "toStack" = "toTable";
-  private nextFlyZ = 1000;
 
   override async init() {
     const [boardTex, cards] = await Promise.all([Assets.load("assets/board.jpg"), loadCardSprites(this.app.renderer)]);
@@ -78,9 +86,20 @@ export class AceOfShadowsScene extends Scene {
       this.addChild(card);
     }
 
+    this.stackCounter.anchor.set(0.5, 0);
+    this.stackCounter.position.set(STACK_X, STACK_Y + COUNTER_Y_OFFSET);
+    this.stackCounter.zIndex = 9999;
+    this.addChild(this.stackCounter);
+
+    this.tableCounter.anchor.set(0.5, 0);
+    this.tableCounter.position.set(TABLE_X, TABLE_Y + COUNTER_Y_OFFSET);
+    this.tableCounter.zIndex = 9999;
+    this.addChild(this.tableCounter);
+
     this.backButton.zIndex = 10000;
     this.addChild(this.backButton);
     this.activateTopCard();
+    this.updateCounters();
     this.app.ticker.add(this.onTick);
   }
 
@@ -129,7 +148,6 @@ export class AceOfShadowsScene extends Scene {
 
     card.visible = true;
     card.eventMode = "none";
-    card.zIndex = this.nextFlyZ++;
     this.activateTopCard();
 
     const startX = card.x;
@@ -145,6 +163,7 @@ export class AceOfShadowsScene extends Scene {
 
     // Reserve slot immediately for concurrent animations
     dest.push(card);
+    this.updateCounters();
     this.inFlight++;
 
     let elapsed = 0;
@@ -164,7 +183,7 @@ export class AceOfShadowsScene extends Scene {
       const scaleBump = Math.sin(t * Math.PI) * (LIFT_SCALE_PEAK - 1);
       const easeRot = 1 - (1 - t) ** 2;
 
-      if (t >= 0.8) card.zIndex = destIndex;
+      card.zIndex = 200 + Math.round(arc);
 
       card.x = startX + (tx - startX) * easePos;
       card.y = startY + (ty - startY) * easePos - arc;
@@ -174,6 +193,7 @@ export class AceOfShadowsScene extends Scene {
       if (t >= 1) {
         card.x = tx;
         card.y = ty;
+        card.zIndex = destIndex;
         card.scale.set(CARD_SCALE);
         card.rotation = finalRotation;
         this.app.ticker.remove(update);
@@ -183,6 +203,11 @@ export class AceOfShadowsScene extends Scene {
     };
 
     this.app.ticker.add(update);
+  }
+
+  private updateCounters() {
+    this.stackCounter.text = String(this.stack.length);
+    this.tableCounter.text = String(this.table.length);
   }
 
   private rebuildZOrder() {
@@ -219,7 +244,6 @@ export class AceOfShadowsScene extends Scene {
     );
 
     this.rebuildZOrder();
-    this.nextFlyZ = 1000;
 
     await delay(0.5);
 

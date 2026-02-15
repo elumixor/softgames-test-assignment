@@ -145,8 +145,9 @@ function buildCardContainer(assets: CardAssets, atlas: TextAtlas, type: CardType
   card.mask = mask;
 
   const img = new Sprite(assets.images[type]);
-  img.width = CARD_WIDTH;
-  img.height = CARD_HEIGHT;
+  img.anchor.set(0.5);
+  img.position.set(CARD_WIDTH / 2, CARD_HEIGHT / 2);
+  img.coverTo(CARD_WIDTH, CARD_HEIGHT);
   card.addChild(img);
 
   const overlay = new Graphics().rect(0, 0, CARD_WIDTH, CARD_HEIGHT).fill(colorHex[color]);
