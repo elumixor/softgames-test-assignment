@@ -7,7 +7,6 @@
       "dependencies": {
         "@elumixor/di": "^0.3",
         "@elumixor/extensions": "^2.3",
-        "@elumixor/frontils": "^3.0",
         "pixi.js": "^8",
       },
       "devDependencies": {
@@ -39,8 +38,6 @@
     "@elumixor/di": ["@elumixor/di@0.3.2", "", {}, "sha512-tA06Bak9bbsMibbpnJFM46pY5H1A8Boo0ySs0iIWIZVzQIJurJGuq75JUKeUur9Irpb+5GtCAmt9nOx/uUpDZA=="],
 
     "@elumixor/extensions": ["@elumixor/extensions@2.3.0", "", {}, "sha512-+H2YcJEJ0jyyH8nQCejhCjPnWSloo97QlU+nHhyq6Rd83YIODJoTR/VyRhRIGetpUQMhQvriwHg8zJgAeIZeLg=="],
-
-    "@elumixor/frontils": ["@elumixor/frontils@3.0.15", "", {}, "sha512-4fMtdyaLodLfyf9xX/ATd0wVfMBsBBkgYKb0SD6Ia7Anbry0BTm3Rpp5kezovxpV+3cYHTBe+gtFTKTYpMOFUw=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.25.12", "", { "os": "aix", "cpu": "ppc64" }, "sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA=="],
 

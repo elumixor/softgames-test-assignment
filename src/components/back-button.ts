@@ -15,7 +15,7 @@ export class BackButton extends Container {
     this.on("pointerdown", onBack);
   }
 
-  placeTopRight(screenWidth: number) {
-    this.position.set(screenWidth - this.width - 16, 16);
+  placeTopRight(rightX: number, topY: number, padding = 16) {
+    this.position.set(rightX - this.width - padding, topY + padding);
   }
 }

@@ -11,10 +11,9 @@
     "format": "biome check --write ."
   },
   "dependencies": {
-    "pixi.js": "^8",
     "@elumixor/di": "^0.3",
     "@elumixor/extensions": "^2.3",
-    "@elumixor/frontils": "^3.0"
+    "pixi.js": "^8"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.9",
