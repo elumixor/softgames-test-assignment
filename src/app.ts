@@ -27,6 +27,7 @@ export class App {
       resizeTo: window,
       resolution: window.devicePixelRatio,
       useBackBuffer: true,
+      antialias: true,
     });
     document.body.appendChild(this.pixi.canvas);
   }

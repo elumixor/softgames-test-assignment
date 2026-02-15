@@ -115,7 +115,7 @@ export class RichText extends Container {
     this._lineHeight = fontSize * 1.4;
     const lineHeight = this._lineHeight;
     const emojiSize = lineHeight;
-    const style = { fontSize, fill, fontFamily: "Anta" };
+    const style = { fontSize, fill, fontFamily: "Sour Gummy" };
     const segments = parseSegments(text);
 
     let x = 0;

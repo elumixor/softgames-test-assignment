@@ -1,5 +1,6 @@
 import { Text } from "pixi.js";
 import { BackButton } from "../components/back-button";
+import { FullscreenButton } from "../components/fullscreen-button";
 import { Scene } from "./scene";
 
 export class PhoenixFlameScene extends Scene {
@@ -10,17 +11,19 @@ export class PhoenixFlameScene extends Scene {
   private readonly backButton = new BackButton(() => {
     location.hash = "";
   });
+  private readonly fullscreenButton = new FullscreenButton();
 
   override init() {
     this.title.anchor.set(0.5);
     this.title.position.set(500, 500);
-    this.addChild(this.title, this.backButton);
+    this.addChild(this.title, this.backButton, this.fullscreenButton);
   }
 
   override onResize(screenWidth: number, _screenHeight: number) {
     const s = this.scale.x;
     const localRight = (screenWidth - this.position.x) / s;
     const localTop = -this.position.y / s;
-    this.backButton.placeTopRight(localRight, localTop);
+    this.fullscreenButton.placeTopRight(localRight, localTop, 0);
+    this.backButton.placeTopRight(localRight, localTop, 1);
   }
 }

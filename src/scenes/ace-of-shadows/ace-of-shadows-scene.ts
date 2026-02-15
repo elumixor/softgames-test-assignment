@@ -3,6 +3,7 @@ import { delay } from "@utils";
 import { Assets, Sprite, Text, type Ticker } from "pixi.js";
 import { App } from "../../app";
 import { BackButton } from "../../components/back-button";
+import { FullscreenButton } from "../../components/fullscreen-button";
 import { Scene } from "../scene";
 import { loadCardSprites } from "./card";
 
@@ -33,18 +34,19 @@ export class AceOfShadowsScene extends Scene {
   private readonly backButton = new BackButton(() => {
     location.hash = "";
   });
+  private readonly fullscreenButton = new FullscreenButton();
   private readonly background = new Sprite();
   private readonly stackCounter = new Text({
     text: "0",
-    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Anta", dropShadow: { color: 0x000000, blur: 4, distance: 2 } },
+    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Sour Gummy", stroke: { color: 0x2a1a0a, width: 4 } },
   });
   private readonly tableCounter = new Text({
     text: "0",
-    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Anta", dropShadow: { color: 0x000000, blur: 4, distance: 2 } },
+    style: { fill: 0xffffff, fontSize: 48, fontFamily: "Sour Gummy", stroke: { color: 0x2a1a0a, width: 4 } },
   });
   private readonly hint = new Text({
     text: "Press on the deck to move faster",
-    style: { fill: 0xffffff, fontSize: 32, fontFamily: "Anta", dropShadow: { color: 0x000000, blur: 4, distance: 2 } },
+    style: { fill: 0xffffff, fontSize: 32, fontFamily: "Sour Gummy", stroke: { color: 0x2a1a0a, width: 4 } },
   });
 
   private stack: Sprite[] = [];
@@ -117,7 +119,8 @@ export class AceOfShadowsScene extends Scene {
     this.addChild(this.hint);
 
     this.backButton.zIndex = 10000;
-    this.addChild(this.backButton);
+    this.fullscreenButton.zIndex = 10000;
+    this.addChild(this.backButton, this.fullscreenButton);
     this.activateTopCard();
     this.updateCounters();
     this.app.ticker.add(this.onTick);
@@ -136,7 +139,8 @@ export class AceOfShadowsScene extends Scene {
       localTop + (localH - this.background.height) / 2,
     );
 
-    this.backButton.placeTopRight(localLeft + localW, localTop);
+    this.fullscreenButton.placeTopRight(localLeft + localW, localTop, 0);
+    this.backButton.placeTopRight(localLeft + localW, localTop, 1);
   }
 
   override destroy() {

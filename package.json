@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "biome check .",
@@ -13,7 +13,8 @@
   "dependencies": {
     "@elumixor/di": "^0.3",
     "@elumixor/extensions": "^2.3",
-    "pixi.js": "^8"
+    "pixi.js": "^8",
+    "screenfull": "^6.0.2"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.9",

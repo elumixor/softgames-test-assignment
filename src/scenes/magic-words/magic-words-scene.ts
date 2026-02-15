@@ -1,8 +1,9 @@
 import { di } from "@elumixor/di";
-import { Assets, Container, Graphics, Sprite, Text, type Texture, type Ticker } from "pixi.js";
+import { Assets, Container, Graphics, Sprite, Text, type Texture, type Ticker, TilingSprite } from "pixi.js";
 import dialogueData from "../../../data/magic-words.json";
 import { App } from "../../app";
 import { BackButton } from "../../components/back-button";
+import { FullscreenButton } from "../../components/fullscreen-button";
 import { Scene } from "../scene";
 import { RichText } from "./rich-text";
 
@@ -33,6 +34,9 @@ const SCROLL_LERP = 0.15;
 const WHEEL_SENSITIVITY = 0.4;
 const TOUCH_DECEL = 0.95;
 const TOUCH_MIN_VELOCITY = 0.5;
+const OVERSCROLL_MAX = 120;
+const OVERSCROLL_RESISTANCE = 0.3;
+const BOUNCE_BACK_LERP = 0.15;
 
 const characterColors: Record<string, number> = {
   Sheldon: 0x6dbb58,
@@ -56,7 +60,9 @@ export class MagicWordsScene extends Scene {
   private readonly backButton = new BackButton(() => {
     location.hash = "";
   });
+  private readonly fullscreenButton = new FullscreenButton();
   private readonly messagesContainer = new Container();
+  private readonly background = new TilingSprite();
   private readonly scrollMask = new Graphics();
   private readonly scrollHit = new Graphics();
 
@@ -106,7 +112,28 @@ export class MagicWordsScene extends Scene {
       const texture = await Assets.load<Texture>(`assets/magic-words/avatars/${a.name.toLowerCase()}.png`);
       this.avatarTextures.set(a.name, texture);
     });
-    await Promise.all([...emojiLoads, ...avatarLoads]);
+    const bgTexturePromise = Assets.load<Texture>("assets/galaxy.png");
+    await Promise.all([...emojiLoads, ...avatarLoads, Assets.load("assets/fonts/sour-gummy.ttf"), bgTexturePromise]);
+
+    // Build checkerboard tile: 2x2 grid with icons at (0,0) and (1,1)
+    const iconTex = await bgTexturePromise;
+    const iconSize = 32;
+    const gap = 50;
+    const cell = iconSize + gap;
+    const tileSize = cell * 2;
+    const tile = new Container();
+    // Invisible rect to define exact tile bounds for seamless tiling
+    const bounds = new Graphics().rect(0, 0, tileSize, tileSize).fill({ color: 0, alpha: 0.001 });
+    const s0 = new Sprite(iconTex);
+    s0.width = s0.height = iconSize;
+    s0.position.set(gap / 2, gap / 2);
+    const s1 = new Sprite(iconTex);
+    s1.width = s1.height = iconSize;
+    s1.position.set(cell + gap / 2, cell + gap / 2);
+    tile.addChild(bounds, s0, s1);
+    this.background.texture = this.app.renderer.generateTexture({ target: tile, resolution: 2 });
+    this.background.tint = 0x1a1a2e;
+    this.addChild(this.background);
 
     this.typingSoundSrc = "assets/sounds/click.mp3";
 
@@ -127,7 +154,7 @@ export class MagicWordsScene extends Scene {
     this.scrollHit.on("pointerupoutside", this.handlePointerUp, this);
     this.addChild(this.scrollHit);
 
-    this.addChild(this.backButton);
+    this.addChild(this.backButton, this.fullscreenButton);
 
     this.app.renderer.canvas.addEventListener("wheel", this.boundWheel, { passive: false });
 
@@ -145,6 +172,11 @@ export class MagicWordsScene extends Scene {
     this.viewTop = localTop + VIEW_PAD_TOP;
     this.viewHeight = localHeight - VIEW_PAD_TOP - VIEW_PAD_BOTTOM;
 
+    // Tiling background covers full viewport
+    this.background.position.set(localLeft, localTop);
+    this.background.width = localWidth;
+    this.background.height = localHeight;
+
     // Redraw mask to cover full viewport
     this.scrollMask.clear();
     this.scrollMask.rect(localLeft, this.viewTop, localWidth, this.viewHeight).fill({ color: 0xffffff });
@@ -158,7 +190,8 @@ export class MagicWordsScene extends Scene {
     this.scrollY = this.scrollTarget;
     this.messagesContainer.y = this.viewTop - this.scrollY;
 
-    this.backButton.placeTopRight(localLeft + localWidth, localTop);
+    this.fullscreenButton.placeTopRight(localLeft + localWidth, localTop, 0);
+    this.backButton.placeTopRight(localLeft + localWidth, localTop, 1);
   }
 
   override destroy() {
@@ -179,7 +212,9 @@ export class MagicWordsScene extends Scene {
 
   private handleWheel(e: WheelEvent) {
     e.preventDefault();
-    this.scrollTarget = this.clampScroll(this.scrollTarget + e.deltaY * WHEEL_SENSITIVITY);
+    let delta = e.deltaY * WHEEL_SENSITIVITY;
+    if (this.scrollTarget < 0 || this.scrollTarget > this.maxScroll) delta *= OVERSCROLL_RESISTANCE;
+    this.scrollTarget = Math.max(-OVERSCROLL_MAX, Math.min(this.scrollTarget + delta, this.maxScroll + OVERSCROLL_MAX));
     this.dragVelocity = 0;
   }
 
@@ -193,8 +228,13 @@ export class MagicWordsScene extends Scene {
     if (!this.dragging) return;
     const dy = this.dragLastY - e.globalY;
     const s = this.scale.x;
-    this.dragVelocity = dy / s;
-    this.scrollTarget = this.clampScroll(this.scrollTarget + this.dragVelocity);
+    let delta = dy / s;
+
+    // Dampen movement when overscrolling
+    if (this.scrollTarget < 0 || this.scrollTarget > this.maxScroll) delta *= OVERSCROLL_RESISTANCE;
+
+    this.scrollTarget = Math.max(-OVERSCROLL_MAX, Math.min(this.scrollTarget + delta, this.maxScroll + OVERSCROLL_MAX));
+    this.dragVelocity = delta;
     this.dragLastY = e.globalY;
   }
 
@@ -261,12 +301,23 @@ export class MagicWordsScene extends Scene {
       }
     }
 
-    // Inertia
-    if (!this.dragging && Math.abs(this.dragVelocity) > TOUCH_MIN_VELOCITY) {
-      this.scrollTarget = this.clampScroll(this.scrollTarget + this.dragVelocity);
-      this.dragVelocity *= TOUCH_DECEL;
-    } else if (!this.dragging) {
-      this.dragVelocity = 0;
+    // Inertia & bounce-back
+    if (!this.dragging) {
+      if (Math.abs(this.dragVelocity) > TOUCH_MIN_VELOCITY) {
+        this.scrollTarget += this.dragVelocity;
+        this.dragVelocity *= TOUCH_DECEL;
+        // Extra deceleration when overscrolling via inertia
+        if (this.scrollTarget < 0 || this.scrollTarget > this.maxScroll) this.dragVelocity *= OVERSCROLL_RESISTANCE;
+      } else {
+        this.dragVelocity = 0;
+      }
+
+      // Bounce back into valid range
+      const clamped = this.clampScroll(this.scrollTarget);
+      if (this.scrollTarget !== clamped) {
+        this.scrollTarget += (clamped - this.scrollTarget) * BOUNCE_BACK_LERP;
+        if (Math.abs(this.scrollTarget - clamped) < 0.5) this.scrollTarget = clamped;
+      }
     }
 
     // Smooth scroll
@@ -329,7 +380,7 @@ export class MagicWordsScene extends Scene {
     const row = new Container();
     const color = characterColors[name] ?? defaultColor;
 
-    const nameLabel = new Text({ text: name, style: { fontSize: 13, fill: color, fontFamily: "Anta" } });
+    const nameLabel = new Text({ text: name, style: { fontSize: 13, fill: color, fontFamily: "Sour Gummy" } });
 
     const richText = new RichText(text, this.emojiTextures, {
       maxWidth: BUBBLE_MAX_TEXT_W,
@@ -380,25 +431,30 @@ export class MagicWordsScene extends Scene {
   }
 
   private createAvatar(name: string): Container {
+    const container = new Container();
+    const color = characterColors[name] ?? defaultColor;
+    const r = AVATAR_SIZE / 2;
+
+    const circleBg = new Graphics().circle(r, r, r).fill({ color: 0xfff5e0 }).stroke({ color: 0x3b2414, width: 3 });
+
     const texture = this.avatarTextures.get(name);
     if (texture) {
       const sprite = new Sprite(texture);
       sprite.width = AVATAR_SIZE;
       sprite.height = AVATAR_SIZE;
-      return sprite;
+      const mask = new Graphics().circle(r, r, r).fill({ color: 0xffffff });
+      container.addChild(circleBg, sprite, mask);
+      sprite.mask = mask;
+    } else {
+      const initial = new Text({
+        text: name[0],
+        style: { fontSize: 24, fill: 0xffffff, fontFamily: "Sour Gummy" },
+      });
+      initial.anchor.set(0.5);
+      initial.position.set(r, r);
+      container.addChild(circleBg, initial);
     }
 
-    const container = new Container();
-    const circle = new Graphics()
-      .circle(AVATAR_SIZE / 2, AVATAR_SIZE / 2, AVATAR_SIZE / 2)
-      .fill({ color: characterColors[name] ?? defaultColor });
-    const initial = new Text({
-      text: name[0],
-      style: { fontSize: 24, fill: 0xffffff, fontFamily: "Anta" },
-    });
-    initial.anchor.set(0.5);
-    initial.position.set(AVATAR_SIZE / 2, AVATAR_SIZE / 2);
-    container.addChild(circle, initial);
     return container;
   }
 }
