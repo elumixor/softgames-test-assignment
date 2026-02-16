@@ -4,6 +4,7 @@ import { App } from "../../app";
 import { BackButton } from "../../components/back-button";
 import { FullscreenButton } from "../../components/fullscreen-button";
 import { Scene } from "../scene";
+import { FireControls } from "./fire-controls";
 import { FireFilter } from "./fire-filter";
 
 export class PhoenixFlameScene extends Scene {
@@ -19,6 +20,7 @@ export class PhoenixFlameScene extends Scene {
 
   private readonly fireBase = new Graphics();
   private readonly fireFilter = new FireFilter();
+  private controls?: FireControls;
 
   override init() {
     this.title.anchor.set(0.5);
@@ -29,6 +31,7 @@ export class PhoenixFlameScene extends Scene {
     this.addChild(this.fireBase, this.title, this.backButton, this.fullscreenButton);
 
     this.app.ticker.add(this.tick, this);
+    this.controls = new FireControls(this.fireFilter);
   }
 
   override onResize(screenWidth: number, screenHeight: number) {
@@ -48,6 +51,7 @@ export class PhoenixFlameScene extends Scene {
   }
 
   override destroy() {
+    this.controls?.destroy();
     this.app.ticker.remove(this.tick, this);
     super.destroy();
   }

@@ -13,6 +13,7 @@
   "dependencies": {
     "@elumixor/di": "^0.3",
     "@elumixor/extensions": "^2.3",
+    "lil-gui": "^0.21.0",
     "pixi.js": "^8",
     "screenfull": "^6.0.2"
   },
