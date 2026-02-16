@@ -1,9 +1,8 @@
-import { di } from "@elumixor/di";
-import { Assets, Container, Graphics, Sprite, Text, type Texture, TilingSprite } from "pixi.js";
-import { App } from "../app";
+import { Container, Graphics, Text } from "pixi.js";
 import { FullscreenButton } from "../components/fullscreen-button";
 import { FullscreenHint } from "../components/fullscreen-hint";
 import { SoundButton } from "../components/sound-button";
+import { TilingBackground } from "../components/tiling-background";
 import { Scene } from "./scene";
 
 interface MenuEntry {
@@ -18,8 +17,7 @@ const entries: MenuEntry[] = [
 ];
 
 export class MenuScene extends Scene {
-  private readonly app = di.inject(App);
-  private readonly background = new TilingSprite();
+  private readonly background = new TilingBackground();
   private readonly title = new Text({
     text: "Softgames Assignment",
     style: { fontSize: 32, fill: 0xffffff, fontFamily: "Anta" },
@@ -30,23 +28,7 @@ export class MenuScene extends Scene {
   private readonly fullscreenHint = new FullscreenHint();
 
   override async init() {
-    // Build checkerboard tiling background
-    const iconTex = await Assets.load<Texture>("assets/galaxy.png");
-    const iconSize = 32;
-    const gap = 50;
-    const cell = iconSize + gap;
-    const tileSize = cell * 2;
-    const tile = new Container();
-    const bounds = new Graphics().rect(0, 0, tileSize, tileSize).fill({ color: 0, alpha: 0.001 });
-    const s0 = new Sprite(iconTex);
-    s0.width = s0.height = iconSize;
-    s0.position.set(gap / 2, gap / 2);
-    const s1 = new Sprite(iconTex);
-    s1.width = s1.height = iconSize;
-    s1.position.set(cell + gap / 2, cell + gap / 2);
-    tile.addChild(bounds, s0, s1);
-    this.background.texture = this.app.renderer.generateTexture({ target: tile, resolution: 2 });
-    this.background.tint = 0x1a1a2e;
+    await this.background.init();
     this.addChild(this.background);
 
     this.title.anchor.set(0.5);
@@ -78,9 +60,7 @@ export class MenuScene extends Scene {
     const s = this.scale.x;
     const localLeft = -this.position.x / s;
     const localTop = -this.position.y / s;
-    this.background.position.set(localLeft, localTop);
-    this.background.width = screenWidth / s;
-    this.background.height = screenHeight / s;
+    this.background.resize(localLeft, localTop, screenWidth / s, screenHeight / s);
 
     this.fullscreenButton.placeTopRight(localLeft + screenWidth / s, localTop, 0);
     this.soundButton.placeTopRight(localLeft + screenWidth / s, localTop, 1);

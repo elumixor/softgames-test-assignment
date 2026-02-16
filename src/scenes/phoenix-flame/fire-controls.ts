@@ -84,7 +84,8 @@ export class FireControls {
   constructor(private readonly filter: FireFilter) {
     const u = filter.resources.fireUniforms.uniforms;
     const isMobile = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-    this.gui = new GUI({ title: "Fire Controls" });
+    this.gui = new GUI({ title: "Fire Controls", closeFolders: true });
+    this.gui.close();
     this.gui.domElement.style.marginTop = "60px";
     this.gui.domElement.style.maxHeight = "calc(100vh - 70px)";
     this.gui.domElement.style.overflowY = "auto";
@@ -135,6 +136,11 @@ export class FireControls {
     addFloat(glow, u, "uGlowStrength", "Strength", 0, 4, 0.05);
     addVec2(glow, u, "uGradientRange", ["Grad From", "Grad To"], 0, 1, 0.01);
 
+    // Pulse
+    const pulse = this.gui.addFolder("Pulse");
+    addFloat(pulse, u, "uPulseSpeed", "Speed", 0, 5, 0.1);
+    addFloat(pulse, u, "uPulseAmount", "Amount", 0, 1, 0.01);
+
     // Log
     this.gui.add({ log: () => this.logValues() }, "log").name("Log to console");
   }
@@ -173,6 +179,8 @@ export class FireControls {
           glowBot: f(u.uGlowBot as Float32Array),
           glowStrength: u.uGlowStrength,
           gradientRange: f(u.uGradientRange as Float32Array),
+          pulseSpeed: u.uPulseSpeed,
+          pulseAmount: u.uPulseAmount,
         },
         null,
         2,

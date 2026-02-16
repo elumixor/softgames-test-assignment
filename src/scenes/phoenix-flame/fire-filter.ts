@@ -71,6 +71,24 @@ uniform vec3 uGlowBot;
 uniform float uGlowStrength;
 uniform vec2 uGradientRange;
 
+// Pulse
+uniform float uPulseSpeed;
+uniform float uPulseAmount;
+
+float hash1(float p) {
+    p = fract(p * 0.1031);
+    p *= p + 33.33;
+    p *= p + p;
+    return fract(p);
+}
+
+float noise1D(float t) {
+    float i = floor(t);
+    float f = fract(t);
+    float u = f * f * (3.0 - 2.0 * f);
+    return mix(hash1(i), hash1(i + 1.0), u);
+}
+
 float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -114,9 +132,11 @@ void main() {
     nUV.y += uTime * uScrollSpeed;
     float n = fbm(nUV);
 
+    float pulse = noise1D(uTime * uPulseSpeed) * uPulseAmount + (1.0 - uPulseAmount);
+
     float dx = (uv.x - uCenter.x);
     float dy = (uv.y - uCenter.y);
-    float falloff = exp(-dx * dx * uXTightness - dy * dy * uYTightness);
+    float falloff = exp(-dx * dx * uXTightness - dy * dy * uYTightness) * pulse;
 
     float alpha = falloff * (0.5 - pow(uv.y, uYCutPow));
     float c = circle(uCircleOffset.x, uCircleOffset.y);
@@ -170,6 +190,8 @@ export interface FireFilterOptions {
   glowBot?: [number, number, number];
   glowStrength?: number;
   gradientRange?: [number, number];
+  pulseSpeed?: number;
+  pulseAmount?: number;
 }
 
 const defaults: Required<FireFilterOptions> = {
@@ -187,7 +209,7 @@ const defaults: Required<FireFilterOptions> = {
   circleMul: 0.8,
   circlePow: 6,
   circleDiv: 2,
-  stepThresholds: [0.8, 0.5, 0.3],
+  stepThresholds: [0.99, 0.5, 0.3],
   stepValues: [1, 0.5, 0.1],
   topHigh: [1, 0.92, 0.6],
   topLow: [0.9, 0.1, 0],
@@ -197,6 +219,8 @@ const defaults: Required<FireFilterOptions> = {
   glowBot: [0.3, 0.05, 0.9],
   glowStrength: 2,
   gradientRange: [0.6, 1],
+  pulseSpeed: 0.8,
+  pulseAmount: 0.15,
 };
 
 export { defaults as fireFilterDefaults };
@@ -234,6 +258,8 @@ export class FireFilter extends Filter {
           uGlowBot: { value: new Float32Array(o.glowBot), type: "vec3<f32>" },
           uGlowStrength: { value: o.glowStrength, type: "f32" },
           uGradientRange: { value: new Float32Array(o.gradientRange), type: "vec2<f32>" },
+          uPulseSpeed: { value: o.pulseSpeed, type: "f32" },
+          uPulseAmount: { value: o.pulseAmount, type: "f32" },
         },
       },
     });

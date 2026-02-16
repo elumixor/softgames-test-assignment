@@ -15,10 +15,12 @@
     "@elumixor/extensions": "^2.3",
     "lil-gui": "^0.21.0",
     "pixi.js": "^8",
-    "screenfull": "^6.0.2"
+    "screenfull": "^6.0.2",
+    "stats.js": "^0.17.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.9",
+    "@types/stats.js": "^0.17.4",
     "typescript": "^5.7",
     "vite": "^6.3"
   }

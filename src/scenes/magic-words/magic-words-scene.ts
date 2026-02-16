@@ -437,7 +437,6 @@ export class MagicWordsScene extends Scene {
 
   private createAvatar(name: string): Container {
     const container = new Container();
-    const color = characterColors[name] ?? defaultColor;
     const r = AVATAR_SIZE / 2;
 
     const circleBg = new Graphics().circle(r, r, r).fill({ color: 0xfff5e0 }).stroke({ color: 0x3b2414, width: 3 });
