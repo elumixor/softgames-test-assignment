@@ -1,4 +1,6 @@
-import { Container } from "pixi.js";
+import { di } from "@elumixor/di";
+import { App } from "@services/app";
+import { Container, type GenerateTextureOptions, type Texture } from "pixi.js";
 
 declare module "pixi.js" {
   interface Container {
@@ -37,6 +39,12 @@ declare module "pixi.js" {
      * Getter returns the current width.
      */
     uniformWidth: number;
+
+    /**
+     * Generates a texture from this container using the renderer.
+     * @param options - Texture generation options (excluding target, which is set to this container)
+     */
+    toTexture(options?: Omit<GenerateTextureOptions, "target">): Texture;
   }
 }
 
@@ -92,5 +100,12 @@ Reflect.defineProperty(Container.prototype, "uniformWidth", {
   },
   get(this: Container): number {
     return this.width;
+  },
+});
+
+Reflect.defineProperty(Container.prototype, "toTexture", {
+  value(this: Container, options?: Omit<GenerateTextureOptions, "target">): Texture {
+    const { renderer } = di.inject(App);
+    return renderer.generateTexture({ ...options, target: this });
   },
 });

@@ -14,11 +14,11 @@ export class LetterAnimatedText extends Text {
     this._fullText = fullText;
   }
 
-  get totalCharacters() {
+  get totalCharacters(): number {
     return this._fullText.length;
   }
 
-  get revealedCount() {
+  get revealedCount(): number {
     return this._revealed;
   }
 
@@ -29,11 +29,11 @@ export class LetterAnimatedText extends Text {
     this.text = this._fullText.slice(0, clamped);
   }
 
-  get isFullyRevealed() {
+  get isFullyRevealed(): boolean {
     return this._revealed >= this._fullText.length;
   }
 
-  revealAll() {
+  revealAll(): void {
     this.revealedCount = this._fullText.length;
   }
 }
