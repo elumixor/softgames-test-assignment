@@ -25,7 +25,8 @@
       },
       "nursery": {
         "noFloatingPromises": "error",
-        "useConsistentArrowReturn": "error"
+        "useConsistentArrowReturn": "error",
+        "useExplicitType": "error"
       }
     }
   },

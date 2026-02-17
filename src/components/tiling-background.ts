@@ -1,7 +1,7 @@
+import { ASSETS } from "@services/assets";
 import { sprite, texture } from "@utils";
 import gsap from "gsap";
 import { Container, Graphics, TilingSprite } from "pixi.js";
-import { ASSETS } from "@/assets";
 
 const PARALLAX_AMOUNT = 15;
 const PARALLAX_DURATION = 0.8;
@@ -30,7 +30,7 @@ export class TilingBackground extends TilingSprite {
     second.position.set(cell + gap / 2, cell + gap / 2);
 
     tile.addChild(bounds, first, second);
-    this.texture = tile.toTexture({ resolution: 2 });
+    this.texture = tile.toTexture();
     this.tint = 0x1a1a2e;
 
     if (!this.isMobile) window.addEventListener("mousemove", this.onMouseMove);

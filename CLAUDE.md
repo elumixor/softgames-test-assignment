@@ -7,6 +7,8 @@
 - Never use `setXXX()`/`getXXX()` methods - use TypeScript getters/setters property accessors instead
 - Never add unnecessary `?` optional chaining - if a value is always defined, don't mark it optional
 - Don't use `!` - throw a descriptive error instead
+- Don't use abbreviations in names - be explicit for clarity (e.g., `message` instead of `msg`, `index` instead of `idx`, `row` instead of `r`, etc.). Exceptions: `i` for loop index, `e` for error in catch block, `x`/`y` for coordinates.
+- Use `Promise.withResolvers()` instead of `new Promise()` when you need to expose resolve/reject outside the executor
 - Don't define excessive helper interfaces and types - rely more on typescript inference - write minimal, readable code
 - Never simply silence errors. Always at least log them to console: `catch (e) { throw new Error("Descriptive message: " + e.message); }`
 
@@ -45,6 +47,32 @@ new MyService(); // registers singleton
 // Retrieve:
 const svc = di.inject(MyService);
 const maybeSvc = di.inject(MyService, { optional: true }); // returns undefined if not registered
+```
+
+### `@elumixor/event-emitter`
+
+Type-safe event emitter. Use instead of passing callbacks for event communication.
+
+```typescript
+import { EventEmitter } from "@elumixor/event-emitter";
+
+// Void event (no data):
+readonly clicked = new EventEmitter();
+this.clicked.emit();
+
+// Typed event:
+readonly changed = new EventEmitter<number>();
+this.changed.emit(42);
+
+// Subscribe (returns { unsubscribe() }):
+const sub = emitter.subscribe((data) => { ... });
+sub.unsubscribe();
+
+// One-shot:
+emitter.subscribeOnce((data) => { ... });
+
+// Await next emission:
+const value = await emitter.nextEvent;
 ```
 
 ### `@elumixor/extensions`
