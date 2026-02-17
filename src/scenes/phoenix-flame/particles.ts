@@ -1,5 +1,6 @@
+import { ASSETS } from "@services/assets";
+import { random } from "@utils";
 import { Container, Sprite, Texture } from "pixi.js";
-import { random } from "../../utils";
 
 const MAX_PARTICLES = 8;
 
@@ -24,12 +25,12 @@ export class FireParticles extends Container {
 
   constructor() {
     super();
-    this.texture = Texture.from("assets/vfx/trace_01_a.png");
+    this.texture = Texture.from(ASSETS.VFX_TRACE);
 
     for (let i = 0; i < MAX_PARTICLES; i++) this.spawnParticle();
   }
 
-  update(dt: number) {
+  update(dt: number): void {
     for (const p of this.particles) {
       p.age += dt;
 
@@ -56,13 +57,13 @@ export class FireParticles extends Container {
     }
   }
 
-  reposition(centerX: number, centerY: number, spawnWidth: number) {
+  reposition(centerX: number, centerY: number, spawnWidth: number): void {
     this.centerX = centerX;
     this.centerY = centerY;
     this.spawnWidth = spawnWidth;
   }
 
-  private spawnParticle() {
+  private spawnParticle(): void {
     const sprite = new Sprite({ texture: this.texture });
     sprite.anchor.set(0.5, 0.1);
     sprite.alpha = 0;
@@ -85,7 +86,7 @@ export class FireParticles extends Container {
     this.particles.push(p);
   }
 
-  private resetParticle(p: Particle) {
+  private resetParticle(p: Particle): void {
     p.age = 0;
     p.lifetime = random(2.5, 3.0);
     p.startX = this.centerX + random(-0.5, 0.5) * this.spawnWidth;

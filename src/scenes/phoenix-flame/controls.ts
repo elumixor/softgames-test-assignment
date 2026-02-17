@@ -2,21 +2,21 @@ import GUI from "lil-gui";
 import type { FireFilter } from "./fire-filter";
 
 // Helper: convert Float32Array [r,g,b] (0–1) to hex string for lil-gui color picker
-function toHex(arr: Float32Array) {
+function toHex(arr: Float32Array): string {
   const r = Math.round(arr[0] * 255);
   const g = Math.round(arr[1] * 255);
   const b = Math.round(arr[2] * 255);
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
 }
 
-function fromHex(hex: string, target: Float32Array) {
+function fromHex(hex: string, target: Float32Array): void {
   const n = Number.parseInt(hex.slice(1), 16);
   target[0] = ((n >> 16) & 0xff) / 255;
   target[1] = ((n >> 8) & 0xff) / 255;
   target[2] = (n & 0xff) / 255;
 }
 
-function addColor(folder: GUI, uniforms: Record<string, unknown>, name: string, label: string) {
+function addColor(folder: GUI, uniforms: Record<string, unknown>, name: string, label: string): void {
   const arr = uniforms[name] as Float32Array;
   const proxy = { [label]: toHex(arr) };
   folder.addColor(proxy, label).onChange((hex: string) => fromHex(hex, arr));
@@ -30,7 +30,7 @@ function addFloat(
   min: number,
   max: number,
   step: number,
-) {
+): void {
   const proxy = { [label]: uniforms[name] as number };
   folder.add(proxy, label, min, max, step).onChange((v: number) => {
     uniforms[name] = v;
@@ -45,7 +45,7 @@ function addVec2(
   min: number,
   max: number,
   step: number,
-) {
+): void {
   const arr = uniforms[name] as Float32Array;
   const proxy = { [labels[0]]: arr[0], [labels[1]]: arr[1] };
   folder.add(proxy, labels[0], min, max, step).onChange((v: number) => {
@@ -64,7 +64,7 @@ function addVec3Sliders(
   min: number,
   max: number,
   step: number,
-) {
+): void {
   const arr = uniforms[name] as Float32Array;
   const proxy = { [labels[0]]: arr[0], [labels[1]]: arr[1], [labels[2]]: arr[2] };
   folder.add(proxy, labels[0], min, max, step).onChange((v: number) => {
@@ -82,7 +82,8 @@ export class FireControls {
   private readonly gui: GUI;
 
   constructor(private readonly filter: FireFilter) {
-    const u = filter.resources.fireUniforms.uniforms;
+    // biome-ignore lint/suspicious/noExplicitAny: Accessing mesh shader uniforms
+    const u = (filter.shader as any).resources.fireUniforms.uniforms;
     const isMobile = "ontouchstart" in window || navigator.maxTouchPoints > 0;
     this.gui = new GUI({ title: "Fire Controls", closeFolders: true });
     this.gui.close();
@@ -145,13 +146,14 @@ export class FireControls {
     this.gui.add({ log: () => this.logValues() }, "log").name("Log to console");
   }
 
-  destroy() {
+  destroy(): void {
     this.gui.destroy();
   }
 
-  private logValues() {
-    const u = this.filter.resources.fireUniforms.uniforms;
-    const f = (v: Float32Array) => Array.from(v).map((x) => Math.round(x * 1000) / 1000);
+  private logValues(): void {
+    // biome-ignore lint/suspicious/noExplicitAny: Accessing mesh shader uniforms
+    const u = (this.filter.shader as any).resources.fireUniforms.uniforms;
+    const f = (v: Float32Array): number[] => Array.from(v).map((x) => Math.round(x * 1000) / 1000);
     console.log(
       JSON.stringify(
         {

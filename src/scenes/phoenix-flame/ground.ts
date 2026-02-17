@@ -1,17 +1,15 @@
-import { di } from "@elumixor/di";
-import { Container, Graphics, Sprite, Texture } from "pixi.js";
-import { App } from "../../app";
+import { ASSETS } from "@services/assets";
+import { texture } from "@utils";
+import { Container, Graphics, Sprite, type Texture } from "pixi.js";
 
 const FLOOR_COLS = 24;
 const FLOOR_ROWS = 12;
 
 export class FireGround extends Container {
-  private readonly app = di.inject(App);
   private readonly floorSprite = new Sprite();
   private readonly fade = new Sprite({
-    texture: Texture.from("assets/card-gradient.png"),
+    texture: texture(ASSETS.CARD_GRADIENT),
     anchor: { x: 0, y: 1 },
-    // blendMode: "multiply",
   });
   private bakedTexture?: Texture;
 
@@ -20,7 +18,7 @@ export class FireGround extends Container {
     this.addChild(this.floorSprite, this.fade);
   }
 
-  resize(cx: number, groundY: number, left: number, top: number, bottom: number, screenWidth: number) {
+  resize(cx: number, groundY: number, left: number, top: number, bottom: number, screenWidth: number): void {
     this.bakeFloor(cx, groundY, left, top, bottom, screenWidth);
 
     this.fade.position.set(left, groundY - 1);
@@ -28,7 +26,7 @@ export class FireGround extends Container {
     this.fade.scale.y = -0.3;
   }
 
-  private bakeFloor(cx: number, groundY: number, left: number, top: number, bottom: number, screenWidth: number) {
+  private bakeFloor(cx: number, groundY: number, left: number, top: number, bottom: number, screenWidth: number): void {
     const g = new Graphics();
 
     // Wall fill above ground line (black)
@@ -87,7 +85,7 @@ export class FireGround extends Container {
 
     // Bake to texture
     if (this.bakedTexture) this.bakedTexture.destroy(true);
-    this.bakedTexture = this.app.renderer.generateTexture(g);
+    this.bakedTexture = g.toTexture();
     this.floorSprite.texture = this.bakedTexture;
     this.floorSprite.position.set(g.bounds.x, g.bounds.y);
     g.destroy();

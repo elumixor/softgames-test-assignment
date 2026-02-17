@@ -1,38 +1,25 @@
-import { Filter, GlProgram } from "pixi.js";
+import { GlProgram, Mesh, PlaneGeometry, Shader } from "pixi.js";
 
 const vertex = `
 in vec2 aPosition;
-out vec2 vTextureCoord;
-out vec2 vPosition;
+in vec2 aUV;
+out vec2 vUV;
 
-uniform vec4 uInputSize;
-uniform vec4 uOutputFrame;
-uniform vec4 uOutputTexture;
-
-vec4 filterVertexPosition(void) {
-    vec2 position = aPosition * uOutputFrame.zw + uOutputFrame.xy;
-    position.x = position.x * (2.0 / uOutputTexture.x) - 1.0;
-    position.y = position.y * (2.0 * uOutputTexture.z / uOutputTexture.y) - uOutputTexture.z;
-    return vec4(position, 0.0, 1.0);
-}
-
-vec2 filterTextureCoord(void) {
-    return aPosition * (uOutputFrame.zw * uInputSize.zw);
-}
+uniform mat3 uProjectionMatrix;
+uniform mat3 uWorldTransformMatrix;
+uniform mat3 uTransformMatrix;
 
 void main(void) {
-    gl_Position = filterVertexPosition();
-    vTextureCoord = filterTextureCoord();
-    vPosition = aPosition;
+    mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
+    gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
+    vUV = aUV;
 }
 `;
 
 const fragment = `
-in vec2 vTextureCoord;
-in vec2 vPosition;
+in vec2 vUV;
 out vec4 finalColor;
 
-uniform sampler2D uTexture;
 uniform float uTime;
 
 // Noise
@@ -116,8 +103,7 @@ float fbm(vec2 p) {
     return v;
 }
 
-float circle(float dx, float dy) {
-    vec2 uv = vPosition;
+float circle(float dx, float dy, vec2 uv) {
     float cx = (0.5 - uv.x + dx) * 2.0;
     cx = max(0.0, 1.0 - cx * cx);
     float cy = (0.5 - uv.y + dy) * 2.0;
@@ -126,8 +112,7 @@ float circle(float dx, float dy) {
 }
 
 void main() {
-    vec2 uv = vPosition;
-
+    vec2 uv = vUV;
     vec2 nUV = uv * uNoiseScale;
     nUV.y += uTime * uScrollSpeed;
     float n = fbm(nUV);
@@ -139,7 +124,7 @@ void main() {
     float falloff = exp(-dx * dx * uXTightness - dy * dy * uYTightness) * pulse;
 
     float alpha = falloff * (0.5 - pow(uv.y, uYCutPow));
-    float c = circle(uCircleOffset.x, uCircleOffset.y);
+    float c = circle(uCircleOffset.x, uCircleOffset.y, uv);
     alpha += pow(c * uCircleMul, uCirclePow) / uCircleDiv;
     alpha *= (n * uNoiseMix + (1.0 - uNoiseMix) * 2.0) + uAlphaOffset;
     alpha = pow(alpha * uAlphaMul, uAlphaPow);
@@ -225,11 +210,13 @@ const defaults: Required<FireFilterOptions> = {
 
 export { defaults as fireFilterDefaults };
 
-export class FireFilter extends Filter {
+export class FireFilter extends Mesh {
   constructor(options: FireFilterOptions = {}) {
     const o = { ...defaults, ...options };
+    const geometry = new PlaneGeometry({ width: 100, height: 100 });
     const glProgram = GlProgram.from({ vertex, fragment, name: "fire-filter" });
-    super({
+
+    const shader = new Shader({
       glProgram,
       resources: {
         fireUniforms: {
@@ -263,13 +250,21 @@ export class FireFilter extends Filter {
         },
       },
     });
+
+    // biome-ignore lint/suspicious/noExplicitAny: PixiJS Shader type mismatch with Mesh
+    super({ geometry, shader: shader as any });
+
+    // Center the pivot point
+    this.pivot.set(50, 50);
   }
 
-  get time() {
-    return this.resources.fireUniforms.uniforms.uTime as number;
+  get time(): number {
+    // biome-ignore lint/suspicious/noExplicitAny: Accessing shader uniforms
+    return ((this.shader as any).resources.fireUniforms.uniforms.uTime as number) ?? 0;
   }
 
   set time(value: number) {
-    this.resources.fireUniforms.uniforms.uTime = value;
+    // biome-ignore lint/suspicious/noExplicitAny: Accessing shader uniforms
+    if (this.shader) (this.shader as any).resources.fireUniforms.uniforms.uTime = value;
   }
 }
