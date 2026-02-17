@@ -47,6 +47,11 @@ export class App {
 
     document.body.appendChild(this.canvas);
 
+    // Prevent context menu and drag behaviors on mobile
+    this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    this.canvas.addEventListener("dragstart", (e) => e.preventDefault());
+    document.body.addEventListener("contextmenu", (e) => e.preventDefault());
+
     // Emit initial resize to position all components correctly
     this.resize();
   }

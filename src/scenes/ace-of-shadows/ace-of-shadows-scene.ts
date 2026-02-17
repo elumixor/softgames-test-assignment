@@ -1,20 +1,16 @@
-import { di } from "@elumixor/di";
-import { delay } from "@utils";
-import { Assets, Sprite, Text, type Ticker } from "pixi.js";
-import { App } from "../../app";
-import { BackButton } from "../../components/back-button";
-import { FullscreenButton } from "../../components/fullscreen-button";
-import { SoundButton } from "../../components/sound-button";
-import { SoundManager } from "../../sound-manager";
-import { Scene } from "../scene";
+import { Scene, type SceneResizeData } from "@scenes/scene";
+import { ASSETS } from "@services/assets";
+import { sound } from "@services/sounds";
+import { delay, sprite, texture } from "@utils";
+import gsap from "gsap";
+import { type Sprite, Text, type Ticker } from "pixi.js";
 import { loadCardSprites } from "./card";
 
-// Layout in 1000x1000 design space
+// Layout centered around origin (0, 0) in 1000x1000 design space
 const CARD_SCALE = 0.35;
-const STACK_X = 300;
-const STACK_Y = 400;
-const TABLE_X = 660;
-const TABLE_Y = 420;
+const STACK_X = -200; // 300 - 500 (center)
+const TABLE_X = 160; // 660 - 500 (center)
+const PILE_Y = 0; // 500 - 500 (center)
 const DEPTH_OFFSET = 1;
 const COUNTER_Y_OFFSET = 280;
 
@@ -28,18 +24,11 @@ const ROTATION_SPREAD_DEG = 5;
 const POSITION_SPREAD = 8;
 
 // Tutorial hint
-const HINT_FADE_SPEED = 1.5;
+const HINT_FADE_DURATION = 1.5;
 const HINT_INACTIVITY_DELAY = 1;
 
 export class AceOfShadowsScene extends Scene {
-  private readonly app = di.inject(App);
-  private readonly backButton = new BackButton(() => {
-    location.hash = "";
-  });
-  private readonly fullscreenButton = new FullscreenButton();
-  private readonly soundButton = new SoundButton();
-  private readonly soundManager = di.inject(SoundManager);
-  private readonly background = new Sprite();
+  private readonly background = sprite(texture(ASSETS.BG_BOARD));
   private readonly stackCounter = new Text({
     text: "0",
     style: { fill: 0xffffff, fontSize: 48, fontFamily: "Sour Gummy", stroke: { color: 0x2a1a0a, width: 4 } },
@@ -61,14 +50,17 @@ export class AceOfShadowsScene extends Scene {
   private tidying = false;
   private direction: "toTable" | "toStack" = "toTable";
   private hintVisible = false;
-  private hintPhase = 0;
   private inactivityTimer = HINT_INACTIVITY_DELAY;
-  private slideSound?: HTMLAudioElement;
+  private hintTween?: gsap.core.Tween;
 
-  override async init() {
-    const [boardTex, cards] = await Promise.all([Assets.load("assets/board.jpg"), loadCardSprites(this.app.renderer)]);
+  constructor() {
+    super({
+      minWidth: 750,
+      minHeight: 900,
+    });
 
-    this.background.texture = boardTex;
+    const cards = loadCardSprites();
+
     this.addChild(this.background);
 
     // Fisher-Yates shuffle
@@ -85,7 +77,7 @@ export class AceOfShadowsScene extends Scene {
     for (let i = 0; i < this.stack.length; i++) {
       const card = this.stack[i];
       card.scale.set(CARD_SCALE);
-      card.position.set(STACK_X + i * DEPTH_OFFSET, STACK_Y - i * DEPTH_OFFSET);
+      card.position.set(STACK_X + i * DEPTH_OFFSET, PILE_Y - i * DEPTH_OFFSET);
       card.zIndex = i;
       card.eventMode = "none";
       card.cursor = "pointer";
@@ -105,73 +97,66 @@ export class AceOfShadowsScene extends Scene {
     }
 
     this.stackCounter.anchor.set(0.5, 0);
-    this.stackCounter.position.set(STACK_X, STACK_Y + COUNTER_Y_OFFSET);
+    this.stackCounter.position.set(STACK_X, PILE_Y + COUNTER_Y_OFFSET);
     this.stackCounter.zIndex = 9999;
     this.addChild(this.stackCounter);
 
     this.tableCounter.anchor.set(0.5, 0);
-    this.tableCounter.position.set(TABLE_X, TABLE_Y + COUNTER_Y_OFFSET);
+    this.tableCounter.position.set(TABLE_X, PILE_Y + COUNTER_Y_OFFSET);
     this.tableCounter.zIndex = 9999;
     this.addChild(this.tableCounter);
 
-    this.slideSound = new Audio("assets/sounds/cards-slide.mp3");
-
     this.hint.anchor.set(0.5);
-    this.hint.position.set((STACK_X + TABLE_X) / 2, STACK_Y + COUNTER_Y_OFFSET + 130);
+    this.hint.position.set((STACK_X + TABLE_X) / 2, PILE_Y + COUNTER_Y_OFFSET + 130);
     this.hint.zIndex = 9999;
     this.hint.alpha = 0;
     this.addChild(this.hint);
 
-    this.backButton.zIndex = 10000;
-    this.fullscreenButton.zIndex = 10000;
-    this.soundButton.zIndex = 10000;
-    this.addChild(this.backButton, this.fullscreenButton, this.soundButton);
     this.activateTopCard();
     this.updateCounters();
     this.app.ticker.add(this.onTick);
   }
 
-  override onResize(screenWidth: number, screenHeight: number) {
-    const s = this.scale.x;
-    const localLeft = -this.position.x / s;
-    const localTop = -this.position.y / s;
-    const localW = screenWidth / s;
-    const localH = screenHeight / s;
+  protected resize({ localLeft, localTop, localWidth, localHeight }: SceneResizeData): void {
+    const localW = localWidth;
+    const localH = localHeight;
 
     this.background.coverTo(localW, localH);
     this.background.position.set(
       localLeft + (localW - this.background.width) / 2,
       localTop + (localH - this.background.height) / 2,
     );
-
-    this.fullscreenButton.placeTopRight(localLeft + localW, localTop, 0);
-    this.soundButton.placeTopRight(localLeft + localW, localTop, 1);
-    this.backButton.placeTopRight(localLeft + localW, localTop, 2);
   }
 
-  override destroy() {
+  override destroy(): void {
     this.app.ticker.remove(this.onTick);
+    gsap.killTweensOf(this.hint);
+    for (const card of [...this.stack, ...this.table]) gsap.killTweensOf(card);
     super.destroy();
   }
 
-  private onTick = (ticker: Ticker) => {
+  private onTick = (ticker: Ticker): void => {
     const dt = ticker.deltaMS / 1000;
 
     // Hint fade logic
     if (this.hovering) {
       this.hintVisible = false;
       this.inactivityTimer = 0;
+      this.hintTween?.kill();
+      gsap.to(this.hint, { alpha: 0, duration: 0.3, ease: "power2.out", overwrite: true });
     } else {
       this.inactivityTimer += dt;
-      if (this.inactivityTimer >= HINT_INACTIVITY_DELAY) this.hintVisible = true;
-    }
-
-    if (this.hintVisible) {
-      this.hintPhase += dt * HINT_FADE_SPEED;
-      this.hint.alpha = (Math.sin(this.hintPhase) + 1) / 2;
-    } else {
-      this.hintPhase = 0;
-      if (this.hint.alpha > 0) this.hint.alpha = Math.max(0, this.hint.alpha - dt * 3);
+      if (this.inactivityTimer >= HINT_INACTIVITY_DELAY && !this.hintVisible) {
+        this.hintVisible = true;
+        this.hintTween = gsap.to(this.hint, {
+          alpha: 1,
+          duration: HINT_FADE_DURATION / 2,
+          ease: "sine.inOut",
+          repeat: -1,
+          yoyo: true,
+          overwrite: true,
+        });
+      }
     }
 
     const source = this.direction === "toTable" ? this.stack : this.table;
@@ -185,7 +170,7 @@ export class AceOfShadowsScene extends Scene {
     }
   };
 
-  private moveCard() {
+  private moveCard(): void {
     const source = this.direction === "toTable" ? this.stack : this.table;
     if (source.length === 0) return;
 
@@ -200,13 +185,10 @@ export class AceOfShadowsScene extends Scene {
     this.activateTopCard();
     this.playSlideSound();
 
-    const startX = card.x;
     const startY = card.y;
-    const startRotation = card.rotation;
-
     const toTable = this.direction === "toTable";
     const baseX = toTable ? TABLE_X : STACK_X;
-    const baseY = toTable ? TABLE_Y : STACK_Y;
+    const baseY = toTable ? PILE_Y : PILE_Y;
     const tx = baseX + destIndex * DEPTH_OFFSET + (Math.random() - 0.5) * 2 * POSITION_SPREAD;
     const ty = baseY - destIndex * DEPTH_OFFSET + (Math.random() - 0.5) * 2 * POSITION_SPREAD;
     const finalRotation = ((Math.random() - 0.5) * 2 * ROTATION_SPREAD_DEG * Math.PI) / 180;
@@ -216,64 +198,76 @@ export class AceOfShadowsScene extends Scene {
     this.updateCounters();
     this.inFlight++;
 
-    let elapsed = 0;
-    const update = (ticker: Ticker) => {
-      if (card.destroyed) {
-        this.app.ticker.remove(update);
-        this.inFlight--;
-        this.checkDirectionSwitch();
-        return;
-      }
-
-      elapsed += ticker.deltaMS / 1000;
-      const t = Math.min(elapsed / ANIMATION_DURATION, 1);
-
-      const easePos = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
-      const arc = Math.sin(t * Math.PI) * LIFT_HEIGHT;
-      const scaleBump = Math.sin(t * Math.PI) * (LIFT_SCALE_PEAK - 1);
-      const easeRot = 1 - (1 - t) ** 2;
-
-      card.zIndex = 200 + Math.round(arc);
-
-      card.x = startX + (tx - startX) * easePos;
-      card.y = startY + (ty - startY) * easePos - arc;
-      card.scale.set(CARD_SCALE * (1 + scaleBump));
-      card.rotation = startRotation + (finalRotation - startRotation) * easeRot;
-
-      if (t >= 1) {
+    const timeline = gsap.timeline({
+      onComplete: () => {
         card.x = tx;
         card.y = ty;
         card.zIndex = destIndex;
         card.scale.set(CARD_SCALE);
         card.rotation = finalRotation;
-        this.app.ticker.remove(update);
         this.inFlight--;
         this.checkDirectionSwitch();
-      }
-    };
+      },
+    });
 
-    this.app.ticker.add(update);
+    // Animate position with custom ease
+    timeline.to(
+      card,
+      {
+        x: tx,
+        y: ty,
+        duration: ANIMATION_DURATION,
+        ease: "power2.inOut",
+      },
+      0,
+    );
+
+    // Animate arc (lift) using a custom property
+    const arcData = { value: 0 };
+    timeline.to(
+      arcData,
+      {
+        value: 1,
+        duration: ANIMATION_DURATION,
+        ease: "sine.inOut",
+        onUpdate: () => {
+          const arc = Math.sin(arcData.value * Math.PI) * LIFT_HEIGHT;
+          const scaleBump = Math.sin(arcData.value * Math.PI) * (LIFT_SCALE_PEAK - 1);
+          card.y = startY + (ty - startY) * arcData.value - arc;
+          card.scale.set(CARD_SCALE * (1 + scaleBump));
+          card.zIndex = 200 + Math.round(arc);
+        },
+      },
+      0,
+    );
+
+    // Animate rotation
+    timeline.to(
+      card,
+      {
+        rotation: finalRotation,
+        duration: ANIMATION_DURATION,
+        ease: "power2.out",
+      },
+      0,
+    );
   }
 
-  private playSlideSound() {
-    if (!this.slideSound || this.soundManager.muted) return;
-    const s = this.slideSound.cloneNode() as HTMLAudioElement;
-    s.volume = 0.3;
-    // biome-ignore lint/suspicious/noEmptyBlockStatements: autoplay may be blocked
-    s.play().catch(() => {});
+  private playSlideSound(): void {
+    sound(ASSETS.SOUND_CARDS_SLIDE, { volume: 0.3 });
   }
 
-  private updateCounters() {
+  private updateCounters(): void {
     this.stackCounter.text = String(this.stack.length);
     this.tableCounter.text = String(this.table.length);
   }
 
-  private rebuildZOrder() {
+  private rebuildZOrder(): void {
     for (let i = 0; i < this.stack.length; i++) this.stack[i].zIndex = i;
     for (let i = 0; i < this.table.length; i++) this.table[i].zIndex = i;
   }
 
-  private activateTopCard() {
+  private activateTopCard(): void {
     for (const card of this.stack) card.eventMode = "none";
     for (const card of this.table) card.eventMode = "none";
 
@@ -281,20 +275,20 @@ export class AceOfShadowsScene extends Scene {
     if (source.length > 0) source[source.length - 1].eventMode = "static";
   }
 
-  private checkDirectionSwitch() {
+  private checkDirectionSwitch(): void {
     const source = this.direction === "toTable" ? this.stack : this.table;
     if (source.length > 0 || this.inFlight > 0 || this.tidying) return;
 
     void this.tidyAndSwitch();
   }
 
-  private async tidyAndSwitch() {
+  private async tidyAndSwitch(): Promise<void> {
     this.tidying = true;
 
     // The pile that just received all cards
     const pile = this.direction === "toTable" ? this.table : this.stack;
     const baseX = this.direction === "toTable" ? TABLE_X : STACK_X;
-    const baseY = this.direction === "toTable" ? TABLE_Y : STACK_Y;
+    const baseY = this.direction === "toTable" ? PILE_Y : PILE_Y;
 
     const duration = 0.3;
     await Promise.all(
@@ -312,38 +306,13 @@ export class AceOfShadowsScene extends Scene {
     this.activateTopCard();
   }
 
-  private animateToNeat(card: Sprite, tx: number, ty: number, duration: number): Promise<void> {
-    return new Promise((resolve) => {
-      const startX = card.x;
-      const startY = card.y;
-      const startRotation = card.rotation;
-      let elapsed = 0;
-
-      const update = (ticker: Ticker) => {
-        if (card.destroyed) {
-          this.app.ticker.remove(update);
-          resolve();
-          return;
-        }
-
-        elapsed += ticker.deltaMS / 1000;
-        const t = Math.min(elapsed / duration, 1);
-        const ease = 1 - (1 - t) ** 3;
-
-        card.x = startX + (tx - startX) * ease;
-        card.y = startY + (ty - startY) * ease;
-        card.rotation = startRotation * (1 - ease);
-
-        if (t >= 1) {
-          card.x = tx;
-          card.y = ty;
-          card.rotation = 0;
-          this.app.ticker.remove(update);
-          resolve();
-        }
-      };
-
-      this.app.ticker.add(update);
+  private animateToNeat(card: Sprite, tx: number, ty: number, duration: number): gsap.core.Tween {
+    return gsap.to(card, {
+      x: tx,
+      y: ty,
+      rotation: 0,
+      duration,
+      ease: "power3.out",
     });
   }
 }

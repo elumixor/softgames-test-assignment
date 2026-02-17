@@ -1,11 +1,13 @@
+import { ASSETS } from "@services/assets";
+import { sprite, texture } from "@utils";
+import { Container, Graphics, Rectangle, RenderTexture, type Sprite, Text, Texture } from "pixi.js";
 import "pixi.js/advanced-blend-modes";
-import { Assets, Container, Graphics, Rectangle, type Renderer, RenderTexture, Sprite, Text, Texture } from "pixi.js";
 
 export const CARD_WIDTH = 768;
 export const CARD_HEIGHT = 1344;
 const CORNER_RADIUS = 50;
 const BORDER_INSET = 15;
-const PADDING = BORDER_INSET + 30;
+const PADDING: number = BORDER_INSET + 30;
 const CIRCLE_R = 45;
 
 type CardType = "warrior" | "rogue" | "mage" | "bard";
@@ -30,18 +32,17 @@ const ATLAS_COLS = 16;
 const ATLAS_ROWS = 9;
 
 /** Load assets, build all 144 cards, bake into a single atlas RenderTexture, return Sprites. */
-export async function loadCardSprites(renderer: Renderer): Promise<Sprite[]> {
-  const [warrior, rogue, mage, bard, gradient] = await Promise.all([
-    Assets.load("assets/cards/warrior.png"),
-    Assets.load("assets/cards/rogue.png"),
-    Assets.load("assets/cards/mage.png"),
-    Assets.load("assets/cards/bard.png"),
-    Assets.load("assets/card-gradient.png"),
-    Assets.load("assets/fonts/fireside.otf"),
-  ]);
-
-  const assets: CardAssets = { images: { warrior, rogue, mage, bard }, gradient };
-  const textAtlas = buildTextAtlas(renderer);
+export function loadCardSprites(): Sprite[] {
+  const assets: CardAssets = {
+    images: {
+      warrior: texture(ASSETS.CARD_WARRIOR),
+      rogue: texture(ASSETS.CARD_ROGUE),
+      mage: texture(ASSETS.CARD_MAGE),
+      bard: texture(ASSETS.CARD_BARD),
+    },
+    gradient: texture(ASSETS.CARD_GRADIENT),
+  };
+  const textAtlas = buildTextAtlas();
 
   // Build grid of all 144 cards positioned in atlas layout
   const grid = new Container();
@@ -59,14 +60,12 @@ export async function loadCardSprites(renderer: Renderer): Promise<Sprite[]> {
   }
 
   // Bake entire grid into a single atlas RenderTexture.
-  // Use resolution 2/3 so actual GPU texture = 8192×8064 (fits max texture size).
-  // Logical size stays 12288×12096, so card frames remain 768×1344 and CARD_SCALE stays 0.35.
   const atlasRt = RenderTexture.create({
     width: ATLAS_COLS * CARD_WIDTH,
     height: ATLAS_ROWS * CARD_HEIGHT,
-    resolution: 2 / 3,
   });
-  renderer.render({ container: grid, target: atlasRt });
+
+  atlasRt.render(grid);
   grid.destroy({ children: true });
 
   // Free intermediate text atlas textures
@@ -83,9 +82,9 @@ export async function loadCardSprites(renderer: Renderer): Promise<Sprite[]> {
       source: atlasRt.source,
       frame: new Rectangle(col * CARD_WIDTH, row * CARD_HEIGHT, CARD_WIDTH, CARD_HEIGHT),
     });
-    const sprite = new Sprite(texture);
-    sprite.anchor.set(0.5);
-    sprites.push(sprite);
+    const cardSprite = sprite(texture);
+    cardSprite.anchor.set(0.5);
+    sprites.push(cardSprite);
   }
 
   return sprites;
@@ -99,7 +98,7 @@ interface TextAtlas {
   circle: Texture;
 }
 
-function buildTextAtlas(renderer: Renderer): TextAtlas {
+function buildTextAtlas(): TextAtlas {
   const fontStyle = { fontFamily: "Fireside", fill: 0xcccccc } as const;
 
   const typeNames = {} as Record<CardType, Texture>;
@@ -109,7 +108,7 @@ function buildTextAtlas(renderer: Renderer): TextAtlas {
       style: { ...fontStyle, fontSize: 64 },
     });
     const rt = RenderTexture.create({ width: Math.ceil(text.width), height: Math.ceil(text.height) });
-    renderer.render({ container: text, target: rt });
+    rt.render(text);
     typeNames[type] = rt;
     text.destroy();
   }
@@ -121,7 +120,7 @@ function buildTextAtlas(renderer: Renderer): TextAtlas {
       style: { ...fontStyle, fontSize: l >= 10 ? 42 : 60 },
     });
     const rt = RenderTexture.create({ width: Math.ceil(text.width), height: Math.ceil(text.height) });
-    renderer.render({ container: text, target: rt });
+    rt.render(text);
     levels[l] = rt;
     text.destroy();
   }
@@ -129,7 +128,7 @@ function buildTextAtlas(renderer: Renderer): TextAtlas {
   const circleGfx = new Graphics().circle(CIRCLE_R + 3, CIRCLE_R + 3, CIRCLE_R).stroke({ color: 0xcccccc, width: 5 });
   const circleSize = (CIRCLE_R + 3) * 2;
   const circleRt = RenderTexture.create({ width: circleSize, height: circleSize });
-  renderer.render({ container: circleGfx, target: circleRt });
+  circleRt.render(circleGfx);
   circleGfx.destroy();
 
   return { typeNames, levels, circle: circleRt };
@@ -137,14 +136,20 @@ function buildTextAtlas(renderer: Renderer): TextAtlas {
 
 // --- Card container builder ---
 
-function buildCardContainer(assets: CardAssets, atlas: TextAtlas, type: CardType, color: CardColor, level: number) {
+function buildCardContainer(
+  assets: CardAssets,
+  atlas: TextAtlas,
+  type: CardType,
+  color: CardColor,
+  level: number,
+): Container {
   const card = new Container();
 
   const mask = new Graphics().roundRect(0, 0, CARD_WIDTH, CARD_HEIGHT, CORNER_RADIUS).fill(0xffffff);
   card.addChild(mask);
   card.mask = mask;
 
-  const img = new Sprite(assets.images[type]);
+  const img = sprite(assets.images[type]);
   img.anchor.set(0.5);
   img.position.set(CARD_WIDTH / 2, CARD_HEIGHT / 2);
   img.coverTo(CARD_WIDTH, CARD_HEIGHT);
@@ -154,7 +159,7 @@ function buildCardContainer(assets: CardAssets, atlas: TextAtlas, type: CardType
   overlay.blendMode = "darken";
   card.addChild(overlay);
 
-  const grad = new Sprite(assets.gradient);
+  const grad = sprite(assets.gradient);
   grad.uniformWidth = CARD_WIDTH;
   grad.y = CARD_HEIGHT - grad.height;
   card.addChild(grad);
@@ -169,7 +174,7 @@ function buildCardContainer(assets: CardAssets, atlas: TextAtlas, type: CardType
   const textLayer = new Container();
   textLayer.blendMode = "difference";
 
-  const typeSprite = new Sprite(atlas.typeNames[type]);
+  const typeSprite = sprite(atlas.typeNames[type]);
   typeSprite.anchor.set(0, 1);
   typeSprite.position.set(PADDING, CARD_HEIGHT - PADDING);
   textLayer.addChild(typeSprite);
@@ -177,12 +182,12 @@ function buildCardContainer(assets: CardAssets, atlas: TextAtlas, type: CardType
   const cx = CARD_WIDTH - PADDING - CIRCLE_R;
   const cy = CARD_HEIGHT - PADDING - CIRCLE_R;
 
-  const circleSprite = new Sprite(atlas.circle);
+  const circleSprite = sprite(atlas.circle);
   circleSprite.anchor.set(0.5);
   circleSprite.position.set(cx, cy);
   textLayer.addChild(circleSprite);
 
-  const levelSprite = new Sprite(atlas.levels[level]);
+  const levelSprite = sprite(atlas.levels[level]);
   levelSprite.anchor.set(0.5);
   levelSprite.position.set(cx, cy);
   textLayer.addChild(levelSprite);

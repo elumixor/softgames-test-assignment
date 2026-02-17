@@ -1,5 +1,5 @@
 import { ASSETS } from "@services/assets";
-import { random } from "@utils";
+import { random, range } from "@utils";
 import { Container, Sprite, Texture } from "pixi.js";
 
 const MAX_PARTICLES = 8;
@@ -25,9 +25,9 @@ export class FireParticles extends Container {
 
   constructor() {
     super();
-    this.texture = Texture.from(ASSETS.VFX_TRACE);
 
-    for (let i = 0; i < MAX_PARTICLES; i++) this.spawnParticle();
+    this.texture = Texture.from(ASSETS.VFX_TRACE);
+    for (const _ of range(MAX_PARTICLES)) this.spawnParticle();
   }
 
   update(dt: number): void {

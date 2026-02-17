@@ -1,5 +1,5 @@
-import { LetterAnimatedText } from "@utils";
-import { Container, Sprite, type Texture } from "pixi.js";
+import { LetterAnimatedText, sprite } from "@utils";
+import { Container, type Texture } from "pixi.js";
 
 type Segment = { type: "text"; content: string } | { type: "emoji"; name: string };
 
@@ -20,7 +20,7 @@ function parseSegments(raw: string): Segment[] {
 }
 
 interface InlineItem {
-  element: LetterAnimatedText | Sprite;
+  element: LetterAnimatedText | ReturnType<typeof sprite>;
   chars: number;
 }
 
@@ -40,11 +40,11 @@ export class RichText extends Container {
   private _revealedCount = 0;
   private _lineHeight = 0;
 
-  get totalCharacters() {
+  get totalCharacters(): number {
     return this._totalCharacters;
   }
 
-  get revealedCount() {
+  get revealedCount(): number {
     return this._revealedCount;
   }
 
@@ -65,23 +65,23 @@ export class RichText extends Container {
     }
   }
 
-  get isFullyRevealed() {
+  get isFullyRevealed(): boolean {
     return this._revealedCount >= this._totalCharacters;
   }
 
-  revealAll() {
+  revealAll(): void {
     this.revealedCount = this._totalCharacters;
   }
 
-  charAt(index: number) {
+  charAt(index: number): string {
     return this._charMap[index] ?? "";
   }
 
-  isEmoji(index: number) {
+  isEmoji(index: number): boolean {
     return this._charMap[index] === EMOJI_CHAR;
   }
 
-  get visibleWidth() {
+  get visibleWidth(): number {
     let maxRight = 0;
     for (const item of this.items) {
       const el = item.element;
@@ -93,7 +93,7 @@ export class RichText extends Container {
     return maxRight;
   }
 
-  get visibleHeight() {
+  get visibleHeight(): number {
     let maxBottom = 0;
     for (const item of this.items) {
       const el = item.element;
@@ -102,6 +102,18 @@ export class RichText extends Container {
       } else if (!el.visible) continue;
       maxBottom = Math.max(maxBottom, el.y + this._lineHeight);
     }
+    return maxBottom;
+  }
+
+  get fullWidth(): number {
+    let maxRight = 0;
+    for (const item of this.items) maxRight = Math.max(maxRight, item.element.x + item.element.width);
+    return maxRight;
+  }
+
+  get fullHeight(): number {
+    let maxBottom = 0;
+    for (const item of this.items) maxBottom = Math.max(maxBottom, item.element.y + this._lineHeight);
     return maxBottom;
   }
 
@@ -131,13 +143,13 @@ export class RichText extends Container {
           y += lineHeight;
         }
 
-        const sprite = new Sprite(texture);
-        sprite.width = emojiSize;
-        sprite.height = emojiSize;
-        sprite.position.set(x, y + (lineHeight - emojiSize) / 2 - 2);
-        sprite.visible = false;
-        this.addChild(sprite);
-        this.items.push({ element: sprite, chars: 1 });
+        const emojiSprite = sprite(texture);
+        emojiSprite.width = emojiSize;
+        emojiSprite.height = emojiSize;
+        emojiSprite.position.set(x, y + (lineHeight - emojiSize) / 2 - 2);
+        emojiSprite.visible = false;
+        this.addChild(emojiSprite);
+        this.items.push({ element: emojiSprite, chars: 1 });
         this._charMap.push(EMOJI_CHAR);
         this._totalCharacters += 1;
         x += emojiSize + 2;

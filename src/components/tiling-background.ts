@@ -5,6 +5,15 @@ import { Container, Graphics, TilingSprite } from "pixi.js";
 
 const PARALLAX_AMOUNT = 15;
 const PARALLAX_DURATION = 0.8;
+const MOBILE_PARALLAX_AMOUNT = 5;
+
+// Track current mouse position globally for initialization
+let lastMouseX: number = window.innerWidth / 2;
+let lastMouseY: number = window.innerHeight / 2;
+window.addEventListener("mousemove", (e: MouseEvent) => {
+  lastMouseX = e.clientX;
+  lastMouseY = e.clientY;
+});
 
 export class TilingBackground extends TilingSprite {
   private readonly isMobile = !window.matchMedia("(hover: hover)").matches;
@@ -33,14 +42,29 @@ export class TilingBackground extends TilingSprite {
     this.texture = tile.toTexture();
     this.tint = 0x1a1a2e;
 
-    if (!this.isMobile) window.addEventListener("mousemove", this.onMouseMove);
+    if (!this.isMobile) {
+      // Initialize parallax based on current mouse position
+      const cx = lastMouseX / window.innerWidth - 0.5;
+      const cy = lastMouseY / window.innerHeight - 0.5;
+      this.tilePosition.set(-cx * PARALLAX_AMOUNT, -cy * PARALLAX_AMOUNT);
+
+      window.addEventListener("mousemove", this.onMouseMove);
+    } else {
+      // Mobile: create looping parallax animation
+      gsap.timeline({ repeat: -1, yoyo: true }).to(this.tilePosition, {
+        x: MOBILE_PARALLAX_AMOUNT,
+        y: MOBILE_PARALLAX_AMOUNT * 0.5,
+        duration: 3.5,
+        ease: "sine.inOut",
+      });
+    }
   }
 
   override destroy(): void {
     if (!this.isMobile) {
       window.removeEventListener("mousemove", this.onMouseMove);
-      gsap.killTweensOf(this.tilePosition);
     }
+    gsap.killTweensOf(this.tilePosition);
     super.destroy();
   }
 

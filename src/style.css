@@ -9,10 +9,21 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  /* Prevent text selection and context menu on mobile */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Prevent default touch behaviors */
+  touch-action: none;
 }
 
 canvas {
   display: block;
   width: 100%;
   height: 100%;
+  /* Additional canvas-specific prevention */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }

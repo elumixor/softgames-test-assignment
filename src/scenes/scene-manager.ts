@@ -1,13 +1,11 @@
-import { BackButton } from "@components/buttons/back-button";
-import { FullscreenButton } from "@components/buttons/fullscreen-button";
-import { SoundButton } from "@components/buttons/sound-button";
+import { BackButton, FullscreenButton, SoundButton } from "@components/buttons";
 import { di } from "@elumixor/di";
+import { AceOfShadowsScene } from "@scenes/ace-of-shadows";
+import { MagicWordsScene } from "@scenes/magic-words";
+import { MenuScene } from "@scenes/menu";
+import { PhoenixFlameScene } from "@scenes/phoenix-flame";
 import { App } from "@services/app";
 import type { Container } from "pixi.js";
-import { AceOfShadowsScene } from "./ace-of-shadows/ace-of-shadows-scene";
-import { MagicWordsScene } from "./magic-words/magic-words-scene";
-import { MenuScene } from "./menu/menu-scene";
-import { PhoenixFlameScene } from "./phoenix-flame/phoenix-flame-scene";
 
 type RouteId = "ace-of-shadows" | "magic-words" | "phoenix-flame";
 

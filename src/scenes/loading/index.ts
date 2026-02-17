@@ -1,1 +1,1 @@
-export { LoadingScene } from "./loading-scene";
+export * from "./loading-scene";

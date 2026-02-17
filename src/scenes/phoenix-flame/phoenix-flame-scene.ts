@@ -1,11 +1,10 @@
 import { Scene, type SceneResizeData } from "@scenes/scene";
 import { ASSETS } from "@services/assets";
 import { sound } from "@services/sounds";
-import { texture } from "@utils";
+import { isMobile, rectSprite, texture } from "@utils";
 import { Sprite, Text } from "pixi.js";
-import { FireControls } from "./controls";
-import { FireFilter } from "./fire-filter";
-import { FireGround } from "./ground";
+import { Fire } from "./fire";
+import { createFloor } from "./floor";
 import { FireParticles } from "./particles";
 
 function hash(n: number): number {
@@ -26,55 +25,60 @@ export class PhoenixFlameScene extends Scene {
     style: { fontSize: 28, fill: 0xffffff, fontFamily: "Anta" },
   });
 
-  private readonly ground = new FireGround();
-  private readonly fireMesh = new FireFilter();
+  private readonly background = rectSprite({ width: 2, height: 2, color: 0x000000 });
+  private readonly floor = createFloor();
+  private readonly fire = new Fire(100, 100);
   private readonly particles = new FireParticles();
   private readonly bloom = new Sprite({
     texture: texture(ASSETS.VFX_EFFECT),
     anchor: 0.5,
     blendMode: "add",
-    scale: 3.0,
+    scale: 1.5,
     tint: 0xff8844,
   });
   private bloomTime = 0;
-  private controls?: FireControls;
   private readonly sound = sound(ASSETS.SOUND_FIRE, { volume: 0.4, loop: true });
 
   constructor() {
     super({
-      // portrait: { minWidth: 450, minHeight: 1000 },
-      // landscape: { minWidth: 1000, minHeight: 700 },
-      minWidth: 50,
-      minHeight: 100,
+      minWidth: 300,
+      minHeight: 600,
+      maxHeight: 800,
     });
 
-    // Center title at top
     this.title.anchor.set(0.5);
-    this.title.position.set(0, -450);
+    this.floor.anchor.set(0.5, 0);
+    this.fire.pivot.y = this.fire.height;
 
-    this.addChild(this.ground, this.fireMesh, this.particles, this.bloom, this.title);
+    // Use overlay blend mode only on non-mobile devices
+    if (!isMobile) this.title.blendMode = "overlay";
+    else this.title.alpha = 0.5;
+
+    this.addChild(this.background, this.floor, this.fire, this.particles, this.bloom, this.title);
 
     this.app.ticker.add(this.tick, this);
-    this.controls = new FireControls(this.fireMesh);
   }
 
   protected resize(data: SceneResizeData): void {
     super.resize(data);
 
-    // Position effects relative to the fire (matching shader uCenter [0.5, 0.95])
-    // const centerX = 0;
-    // const centerY = fireSize * 0.35; // 0.85 - 0.5 = 0.35 offset from center
-    // this.particles.reposition(centerX, centerY, fireSize * 0.3);
-    // this.bloom.position.set(centerX, centerY);
-    // const groundY = centerY - fireSize * 0.05;
+    // Scale background to fill the entire window
+    this.background.width = data.localWidth;
+    this.background.height = data.localHeight;
+    this.background.position.set(data.localLeft, data.localTop);
 
-    // Ground needs viewport coordinates for full-width rendering
-    // const { localLeft, localTop, localWidth, localHeight } = data;
-    // this.ground.resize(centerX, groundY, localLeft, localTop, localTop + localHeight, localWidth);
+    this.fire.y = data.localHeight / 2;
+    this.fire.uniformHeight = data.localHeight;
+
+    const effectCenterY = (data.localHeight * 0.75) / 2;
+    this.bloom.y = effectCenterY;
+    this.particles.reposition(0, effectCenterY, data.localHeight * 0.3);
+
+    this.floor.coverTo(data.localWidth * 1.5, data.localHeight * 0.25);
+    this.floor.y = data.localHeight * 0.25;
   }
 
   override destroy(): void {
-    this.controls?.destroy();
     this.sound.stop();
     this.app.ticker.remove(this.tick, this);
     super.destroy();
@@ -82,7 +86,7 @@ export class PhoenixFlameScene extends Scene {
 
   private tick = (): void => {
     const dt = this.app.ticker.deltaMS / 1000;
-    this.fireMesh.time += dt;
+    this.fire.time += dt;
     this.particles.update(dt);
     this.bloomTime += dt;
     this.bloom.rotation = noise1D(this.bloomTime);

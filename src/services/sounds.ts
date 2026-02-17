@@ -2,6 +2,10 @@ import { di } from "@elumixor/di";
 
 const STORAGE_KEY = "sound-muted";
 
+interface SoundInstance {
+  stop(): void;
+}
+
 @di.injectable
 export class SoundManager {
   private _muted = localStorage.getItem(STORAGE_KEY) === "true";
@@ -36,11 +40,15 @@ export class SoundManager {
     this.buffers.set(src, buffer);
   }
 
-  play(src: string, options?: { volume?: number; loop?: boolean; rate?: number }): void {
+  play(src: string, options?: { volume?: number; loop?: boolean; rate?: number }): SoundInstance {
     const buffer = this.buffers.get(src);
     if (!buffer) {
       console.warn(`Sound not found: ${src}`);
-      return;
+      return {
+        stop(): void {
+          // No-op stop for missing sound
+        },
+      };
     }
 
     const source = this.context.createBufferSource();
@@ -53,10 +61,15 @@ export class SoundManager {
     source.connect(gain).connect(this.masterGain);
 
     source.start();
+    return {
+      stop(): void {
+        source.stop();
+      },
+    };
   }
 }
 
 /** Utility alias for di.inject(SoundManager).play(...) */
-export function sound(src: string, options?: { volume?: number; loop?: boolean; rate?: number }): void {
-  di.inject(SoundManager).play(src, options);
+export function sound(src: string, options?: { volume?: number; loop?: boolean; rate?: number }): SoundInstance {
+  return di.inject(SoundManager).play(src, options);
 }

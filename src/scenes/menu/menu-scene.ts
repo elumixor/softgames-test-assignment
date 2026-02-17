@@ -1,6 +1,5 @@
 import { TilingBackground } from "@components/tiling-background";
-import { Scene } from "@scenes/scene";
-import type { ResizeData } from "@services/app";
+import { Scene, type SceneResizeData } from "@scenes/scene";
 import gsap from "gsap";
 import { Container, Text } from "pixi.js";
 import { FullscreenHintText } from "./fullscreen-hint";
@@ -82,17 +81,13 @@ export class MenuScene extends Scene {
     timeline.call(() => this.fullscreenHint.startPulse());
   }
 
-  protected resize({ width, height }: ResizeData): void {
-    super.resize({ width, height });
-
+  protected resize({ localLeft, localTop, localWidth, localHeight, scale }: SceneResizeData): void {
     // Background needs to fill the entire viewport
-    const s = this.scale.x;
-    const localLeft = -(width / 2) / s;
-    const localTop = -(height / 2) / s;
-
+    // Normalize scale to ensure consistent tile size across all scenes
     this.background.position.set(localLeft, localTop);
-    this.background.width = width / s;
-    this.background.height = height / s;
+    this.background.scale.set(1 / scale);
+    this.background.width = localWidth * scale;
+    this.background.height = localHeight * scale;
   }
 
   override destroy(): void {

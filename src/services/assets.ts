@@ -7,6 +7,7 @@ export const ASSETS = {
   // Fonts
   FONT_ANTA: "assets/fonts/anta.ttf",
   FONT_SOUR_GUMMY: "assets/fonts/sour-gummy.ttf",
+  FONT_FIRESIDE: "assets/fonts/fireside.otf",
 
   // UI
   UI_LEFT: "assets/ui/left.png",
