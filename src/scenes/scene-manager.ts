@@ -6,7 +6,7 @@ import { App } from "@services/app";
 import type { Container } from "pixi.js";
 import { AceOfShadowsScene } from "./ace-of-shadows/ace-of-shadows-scene";
 import { MagicWordsScene } from "./magic-words/magic-words-scene";
-import { MenuScene } from "./menu-scene/menu-scene";
+import { MenuScene } from "./menu/menu-scene";
 import { PhoenixFlameScene } from "./phoenix-flame/phoenix-flame-scene";
 
 type RouteId = "ace-of-shadows" | "magic-words" | "phoenix-flame";

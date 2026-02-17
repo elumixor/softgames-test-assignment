@@ -1,28 +1,21 @@
 import "@elumixor/extensions";
+import { LoadingScene } from "@scenes/loading";
+import { SceneManager } from "@scenes/scene-manager";
+import { App } from "@services/app";
+import { AssetLoader } from "@services/asset-loader";
+import { SoundManager } from "@services/sounds";
+import "@utils/extensions";
 import "pixi.js/advanced-blend-modes";
-import "./utils/extensions";
-import { Assets } from "pixi.js";
 import Stats from "stats.js";
-import { App } from "./app";
-import { SceneManager } from "./scenes/scene-manager";
-import { SoundManager } from "./sound-manager";
 
-async function main() {
+async function main(): Promise<void> {
   const app = new App();
   await app.init();
-  await Assets.load([
-    "assets/fonts/anta.ttf",
-    "assets/fonts/sour-gummy.ttf",
-    "assets/ui/left.png",
-    "assets/ui/fullscreen.png",
-    "assets/ui/sound.png",
-    "assets/ui/no-sound.png",
-    "assets/card-gradient.png",
-    "assets/vfx/trace_01_a.png",
-    "assets/vfx/effect_03_a.png",
-  ]);
 
   new SoundManager();
+  new AssetLoader();
+
+  // Show FPS stats
   const stats = new Stats();
   stats.showPanel(0);
   document.body.appendChild(stats.dom);
@@ -30,12 +23,16 @@ async function main() {
     stats.update();
   });
 
-  const sceneManager = new SceneManager();
+  // Show loading scene first
+  const loadingScene = new LoadingScene();
+  app.stage.addChild(loadingScene);
+  await loadingScene.load();
 
-  await sceneManager.navigateToRoute();
+  // Fade out loading scene smoothly
+  await loadingScene.fadeOut();
+  app.stage.removeChild(loadingScene);
 
-  window.addEventListener("resize", () => sceneManager.resize());
-  window.addEventListener("hashchange", () => void sceneManager.navigateToRoute());
+  new SceneManager();
 }
 
 main().catch((e: Error) => console.error(`Failed to start application: ${e.message}`));
