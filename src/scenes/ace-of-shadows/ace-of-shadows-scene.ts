@@ -4,10 +4,10 @@ import { sound } from "@services/sounds";
 import { delay, sprite, texture } from "@utils";
 import gsap from "gsap";
 import { type Sprite, Text, type Ticker } from "pixi.js";
-import { loadCardSprites } from "./card";
+import { loadCardSprites } from "./build-sprites-from-spritesheet";
 
 // Layout centered around origin (0, 0) in 1000x1000 design space
-const CARD_SCALE = 0.35;
+const CARD_SCALE = 1.0;
 const STACK_X = -200; // 300 - 500 (center)
 const TABLE_X = 160; // 660 - 500 (center)
 const PILE_Y = 0; // 500 - 500 (center)
@@ -74,8 +74,7 @@ export class AceOfShadowsScene extends Scene {
     this.sortableChildren = true;
     this.background.zIndex = -1;
 
-    for (let i = 0; i < this.stack.length; i++) {
-      const card = this.stack[i];
+    for (const [i, card] of this.stack.entries()) {
       card.scale.set(CARD_SCALE);
       card.position.set(STACK_X + i * DEPTH_OFFSET, PILE_Y - i * DEPTH_OFFSET);
       card.zIndex = i;
